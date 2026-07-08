@@ -32,7 +32,7 @@ const COMMENT_STYLE = {
 };
 const EXTENSIONS = Object.keys(COMMENT_STYLE);
 
-const REPO_ROOT = git(['rev-parse', '--show-toplevel']).trim();
+const REPO_ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 
 function git(args) {
   return execFileSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8' });
