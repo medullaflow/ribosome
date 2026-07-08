@@ -2,7 +2,6 @@ name: DCO
 
 on:
   pull_request:
-    branches: [main]
 
 jobs:
   check:
@@ -14,7 +13,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Check Signed-off-by on every commit
         run: node scripts/check-dco.js ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}
