@@ -1,0 +1,43 @@
+================================================================================
+                    ribosome NOTICES
+================================================================================
+
+Copyright (C) 2026 Matteo Lacchio and Contributors
+
+This project is licensed under the GNU Affero General Public License,
+version 3 (or, at your option, any later version) — the "AGPLv3-or-later".
+See the file LICENSE for the full license text.
+
+Unlike the plain GPL, the AGPL's copyleft also applies when the software
+(or a modified version of it) is used to provide a service over a network.
+If you run a modified version of ribosome and let others interact with
+it remotely (e.g. as a hosted or SaaS offering), you must make the
+Corresponding Source of your modified version available to those users,
+under this same license (AGPLv3 §13). This applies whether or not you
+distribute any copies of the software itself.
+
+Any copy or modified version you distribute or run as a network service
+must retain:
+  - the copyright notices in this file, in AUTHORS, and in the source
+    headers;
+  - a copy of, or link to, the LICENSE file;
+  - a clear statement of any changes you made (AGPLv3 §5).
+
+================================================================================
+                    THIRD-PARTY COMPONENTS
+================================================================================
+
+None at this time. Add entries below as dependencies are introduced:
+
+--------------------------------------------------------------------------------
+[LIBRARY NAME]
+--------------------------------------------------------------------------------
+Version: X.Y.Z
+License: MIT/Apache/GPL/etc.
+Copyright: YEAR OWNER
+Location: vendor/name OR package.json
+
+================================================================================
+Disclaimer: Third-party components remain under their respective licenses.
+Contact: https://github.com/ookmash
+================================================================================

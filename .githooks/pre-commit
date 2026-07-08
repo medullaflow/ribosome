@@ -1,0 +1,6 @@
+#!/bin/sh
+# Native git hook, versioned in .githooks/ and wired via `core.hooksPath`
+# (see scripts/setup-git-hooks.js, run automatically by `npm install`).
+# Blocks commits that add/modify a source file without a valid SPDX header.
+
+node scripts/check-spdx-headers.js

@@ -1,0 +1,28 @@
+# =============================================================================
+# ribosome - Authorship and Copyright Holders
+# =============================================================================
+#
+# This file identifies the principal copyright holders and their roles.
+# All contributions are licensed under the GNU Affero General Public License
+# v3 (or, at your option, any later version) — see LICENSE.
+#
+# Format: Name (<URL>) (years) - Role/contributions
+# =============================================================================
+
+ORIGINAL AUTHOR AND PRIMARY DEVELOPER
+    Matteo Lacchio (https://github.com/ookmash) (2026-present)
+    - Original conception and project initiation
+    - Core architecture and system design
+    - Primary codebase development
+    - Project maintenance and governance
+
+MAJOR CONTRIBUTORS
+    [Name] (<https://github.com/USERNAME>) (YYYY-present)
+    - Feature implementation
+
+# =============================================================================
+# NOTE: Individual contributors retain copyright of their own contributions.
+#       For a complete, auto-generated list of all contributors, see the
+#       CONTRIBUTORS file (updated by CI from git history) or run:
+#       git shortlog -sne --all
+# =============================================================================

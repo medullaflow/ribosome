@@ -1,0 +1,25 @@
+name: Update Contributors
+
+on:
+  push:
+    branches: [main, master]
+  schedule:
+    - cron: '0 0 * * 1'
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate CONTRIBUTORS
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git shortlog -sne --all > CONTRIBUTORS
+          if ! git diff --quiet CONTRIBUTORS; then
+            git add CONTRIBUTORS
+            git commit -m "chore: update CONTRIBUTORS" || true
+          fi

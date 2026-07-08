@@ -1,0 +1,33 @@
+{
+  "name": "@medullaflow/ribosome",
+  "version": "0.1.0",
+  "description": "Standalone dependency resolver: tool/runtime versions via mise-en-place, MCP servers via the MCP Registry. Designed for embedding in workflow orchestrators.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "AGPL-3.0-or-later",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "prepare": "node scripts/setup-git-hooks.js",
+    "build": "tsc",
+    "spdx:check": "node scripts/check-spdx-headers.js --all",
+    "spdx:fix": "node scripts/check-spdx-headers.js --fix"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/medullaflow/ribosome"
+  },
+  "keywords": [
+    "dependency-resolution",
+    "mise",
+    "mcp",
+    "mcp-registry",
+    "workflow",
+    "devtools"
+  ]
+}

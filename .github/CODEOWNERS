@@ -1,0 +1,9 @@
+# Licensing-sensitive files always need @ookmash's review — see
+# CONTRIBUTING.md's licensing/attribution policy (new dependencies
+# must stay AGPLv3-compatible).
+/LICENSE @ookmash
+/COPYING.md @ookmash
+/NOTICE @ookmash
+/AUTHORS @ookmash
+/CONTRIBUTING.md @ookmash
+/package.json @ookmash
