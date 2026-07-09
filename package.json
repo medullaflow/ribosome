@@ -5,17 +5,26 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "AGPL-3.0-or-later",
+  "private": true,
   "files": [
     "dist"
   ],
-  "scripts": {
-    "prepare": "node scripts/setup-git-hooks.js",
-    "build": "tsc",
-    "spdx:check": "node scripts/check-spdx-headers.js --all",
-    "spdx:fix": "node scripts/check-spdx-headers.js --fix"
+  "engines": {
+    "bun": ">=1.3.0"
   },
-  "dependencies": {},
+  "scripts": {
+    "prepare": "bun scripts/setup-git-hooks.js",
+    "build": "tsc",
+    "test": "bun run build && bun test",
+    "compile": "bun build --compile src/index.ts --outfile dist/ribosome-lib-smoke",
+    "spdx:check": "bun scripts/check-spdx-headers.js --all",
+    "spdx:fix": "bun scripts/check-spdx-headers.js --fix"
+  },
+  "dependencies": {
+    "@medullaflow/ribosome-schema": "file:../ribosome-schema/bindings/typescript"
+  },
   "devDependencies": {
+    "@types/node": "^24.0.0",
     "typescript": "^5.7.0"
   },
   "repository": {
