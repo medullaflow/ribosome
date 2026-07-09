@@ -9,8 +9,8 @@
 // Interface shape only for now: resolve() is a stub. Real work is an HTTP GET to
 // the source URL and mapping the response to a server.json document.
 
-import type { McpRegistry, RegistryQuery } from "../../ports/mcp-registry";
 import type { McpServerJson } from "@medullaflow/ribosome-schema";
+import type { McpRegistry, RegistryQuery } from "../../ports/mcp-registry";
 
 export class OfficialMcpRegistry implements McpRegistry {
   readonly type = "mcp-registry-v1";

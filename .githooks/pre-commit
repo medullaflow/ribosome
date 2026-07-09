@@ -1,6 +1,11 @@
 #!/bin/sh
 # Native git hook, versioned in .githooks/ and wired via `core.hooksPath`
-# (see scripts/setup-git-hooks.js, run automatically by `npm install`).
-# Blocks commits that add/modify a source file without a valid SPDX header.
+# (see scripts/setup-git-hooks.js, run automatically by `bun install`).
+# Blocks commits that break SPDX headers or Biome lint/format on staged files.
+
+set -e
 
 node scripts/check-spdx-headers.js
+# Local Biome binary (node shebang), so the hook works even where `bun`/`bunx`
+# isn't on PATH. Requires `bun install` to have run — which also wires this hook.
+./node_modules/.bin/biome check --staged --no-errors-on-unmatched

@@ -24,13 +24,13 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import type { PooledRuntime } from "@medullaflow/ribosome-schema";
 import type {
   EnvironmentDelta,
   EnvironmentProvider,
   MaterializeContext,
   RuntimeRequirement,
 } from "../../ports/environment-provider";
-import type { PooledRuntime } from "@medullaflow/ribosome-schema";
 
 const execFileAsync = promisify(execFile);
 
@@ -51,13 +51,8 @@ export class MiseEnvironmentProvider implements EnvironmentProvider {
   // synchronously (the port forbids new installs/subprocesses there).
   private readonly binPaths = new Map<string, string[]>();
 
-  async materialize(
-    reqs: RuntimeRequirement[],
-    ctx: MaterializeContext,
-  ): Promise<PooledRuntime[]> {
-    const settled = await Promise.allSettled(
-      reqs.map((req) => this.installOne(req, ctx.cwd)),
-    );
+  async materialize(reqs: RuntimeRequirement[], ctx: MaterializeContext): Promise<PooledRuntime[]> {
+    const settled = await Promise.allSettled(reqs.map((req) => this.installOne(req, ctx.cwd)));
 
     const pool = new Map<string, PooledRuntime>(); // dedup by (tool, exact version)
     const failures: InstallFailure[] = [];
@@ -77,7 +72,9 @@ export class MiseEnvironmentProvider implements EnvironmentProvider {
 
     if (failures.length > 0) {
       const lines = failures.map((f) => `  - ${f.tool}@${f.versionSpec || "latest"}: ${f.reason}`);
-      throw new Error(`mise failed to provision ${failures.length} runtime(s):\n${lines.join("\n")}`);
+      throw new Error(
+        `mise failed to provision ${failures.length} runtime(s):\n${lines.join("\n")}`,
+      );
     }
 
     return [...pool.values()];
@@ -92,7 +89,9 @@ export class MiseEnvironmentProvider implements EnvironmentProvider {
     const installPath = await mise(["where", query], cwd);
     const version = installPath.split("/").filter(Boolean).pop();
     if (!version) {
-      throw new Error(`could not determine the installed version from mise's path "${installPath}"`);
+      throw new Error(
+        `could not determine the installed version from mise's path "${installPath}"`,
+      );
     }
 
     const id = `${req.tool}@${version}`;

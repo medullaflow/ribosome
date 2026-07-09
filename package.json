@@ -17,6 +17,9 @@
     "build": "tsc",
     "test": "bun run build && bun test",
     "compile": "bun build --compile src/index.ts --outfile dist/ribosome-lib-smoke",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "format": "biome format --write",
     "spdx:check": "bun scripts/check-spdx-headers.js --all",
     "spdx:fix": "bun scripts/check-spdx-headers.js --fix"
   },
@@ -24,6 +27,7 @@
     "@medullaflow/ribosome-schema": "file:../ribosome-schema/bindings/typescript"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.3",
     "@types/node": "^24.0.0",
     "typescript": "^5.7.0"
   },

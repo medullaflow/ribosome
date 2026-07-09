@@ -4,6 +4,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+### Added
+- **Biome** as the linter + formatter (`biome.json`), enforced at the
+  pre-commit hook (staged files) and in CI (whole tree) — the first of the
+  [Guardrails & Governance](https://github.com/medullaflow/ribosome/milestones)
+  guardrails that turn documented conventions into machine-enforced rules for
+  a codebase written mostly by LLM agents. `bun run lint` / `lint:fix` /
+  `format`. Import-organize is on everywhere except the curated `src/index.ts`
+  public-API barrel.
+- `AGENTS.md` — machine-readable operating contract for AI coding agents
+  (toolchain, setup, commands, hard constraints), the agent-facing counterpart
+  to `CONTRIBUTING.md`. README notes the human+agent development model.
+
 ### Changed
 - **Split the standard into its own repo.** The manifest/lockfile JSON Schemas,
   conformance corpus, and TypeScript binding moved to

@@ -13,6 +13,10 @@
 //   ports/         abstractions: EnvironmentProvider, McpRegistry
 //   adapters/      concretions: mise, official MCP registry
 //   orchestrator/  the phased materialization pipeline
+//
+// Exports are grouped by architectural layer, on purpose — Biome's import
+// organizer is disabled for this one file (see biome.json overrides) so the
+// grouping reads as public-API documentation rather than an alphabetical list.
 
 // ── The standard (re-exported for convenience) ─────────────────────────────
 export * from "@medullaflow/ribosome-schema";

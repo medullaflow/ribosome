@@ -80,27 +80,35 @@ test("composeView() produces a pathPrepend that resolves the right binary", test
 test("composeView() throws for a pool id it never materialized", testOpts, () => {
   const provider = new MiseEnvironmentProvider();
   assert.throws(
-    () => provider.composeView([{ id: "node@1.2.3", tool: "node", requested: "1", version: "1.2.3" }], ["node@1.2.3"]),
+    () =>
+      provider.composeView(
+        [{ id: "node@1.2.3", tool: "node", requested: "1", version: "1.2.3" }],
+        ["node@1.2.3"],
+      ),
     /no cached bin paths/,
   );
 });
 
-test("materialize() aggregates failures instead of throwing on the first one", testOpts, async () => {
-  const provider = new MiseEnvironmentProvider();
-  const cwd = mkdtempSync(join(tmpdir(), "ribosome-mise-test-"));
+test(
+  "materialize() aggregates failures instead of throwing on the first one",
+  testOpts,
+  async () => {
+    const provider = new MiseEnvironmentProvider();
+    const cwd = mkdtempSync(join(tmpdir(), "ribosome-mise-test-"));
 
-  await assert.rejects(
-    provider.materialize(
-      [
-        { tool: "totally-not-a-real-tool-xyz", versionSpec: "1" },
-        { tool: "also-not-real-abc", versionSpec: "1" },
-      ],
-      { cwd },
-    ),
-    (err) => {
-      assert.match(err.message, /totally-not-a-real-tool-xyz/);
-      assert.match(err.message, /also-not-real-abc/);
-      return true;
-    },
-  );
-});
+    await assert.rejects(
+      provider.materialize(
+        [
+          { tool: "totally-not-a-real-tool-xyz", versionSpec: "1" },
+          { tool: "also-not-real-abc", versionSpec: "1" },
+        ],
+        { cwd },
+      ),
+      (err) => {
+        assert.match(err.message, /totally-not-a-real-tool-xyz/);
+        assert.match(err.message, /also-not-real-abc/);
+        return true;
+      },
+    );
+  },
+);

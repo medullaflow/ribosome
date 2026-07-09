@@ -40,15 +40,17 @@ bun install       # installs deps, links the sibling schema repo, wires git hook
 bun run build     # tsc — type-check and emit dist/
 bun run test      # build, then run the full suite (incl. a live mise integration test)
 bun run compile   # bun build --compile — proves the standalone-binary path still works
+bun run lint      # Biome check (lint + format + import-organize), no writes
+bun run lint:fix  # Biome check --write — auto-fix everything fixable
+bun run format    # Biome format --write — reformat only
 bun run spdx:check   # verify SPDX headers on all source files
 bun run spdx:fix     # insert any missing SPDX headers
 ```
 
 The mise integration test self-skips if `mise` isn't on `PATH`; CI installs
-mise so it runs for real there. There is **no lint or format command yet** —
-that's tracked in [#28](https://github.com/medullaflow/ribosome/issues/28),
-part of the Guardrails & Governance milestone. Until it lands, matching the
-surrounding code's style is on you.
+mise so it runs for real there. **Run `bun run lint:fix` before committing** —
+lint and formatting are enforced (pre-commit + CI), so unformatted or
+lint-failing code will not merge.
 
 ## Hard constraints
 
@@ -56,6 +58,9 @@ Each constraint is tagged with how it's currently enforced. **Enforced** = a
 check will fail if you break it. **Convention only** = nothing stops you yet;
 don't rely on that lasting.
 
+- **Lint + formatting** (Biome — style, formatting, import order, correctness
+  rules; config in `biome.json`). *Enforced* — pre-commit hook (staged files)
+  + CI (whole tree). Run `bun run lint:fix` before committing.
 - **SPDX headers** on every `.ts`/`.tsx`/`.js`/`.jsx`/`.mjs`/`.cjs`/`.scss`/`.css`
   file (see `.github/HEADER_TEMPLATE.txt` for the exact per-type format).
   *Enforced* — pre-commit hook + CI. Run `bun run spdx:fix` if you add a file.

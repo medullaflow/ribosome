@@ -5,7 +5,7 @@
 // descriptor. The orchestrator depends on this interface only — it must not know
 // which registry (official, GitHub, Microsoft, ...) or protocol is in play.
 
-import type { RegistrySource, McpServerJson } from "@medullaflow/ribosome-schema";
+import type { McpServerJson, RegistrySource } from "@medullaflow/ribosome-schema";
 
 /** A request to resolve one server from one registry source. */
 export interface RegistryQuery {

@@ -12,6 +12,18 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun scripts/check-spdx-headers.js --all
 
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      # Biome (lint + format + import-organize) in CI mode. Pinned to match the
+      # @biomejs/biome devDependency in package.json — keep the two in sync.
+      # Run via bunx so this gate stays dependency-free: no `bun install`, which
+      # would otherwise need the ribosome-schema sibling checkout the file: dep
+      # requires, just to lint source text.
+      - run: bunx @biomejs/biome@2.5.3 ci
+
   test:
     runs-on: ubuntu-latest
     steps:
