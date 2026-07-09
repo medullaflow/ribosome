@@ -181,6 +181,22 @@ this repo's own toolchain choice, not a requirement placed on consumers.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution/attribution workflow
 and DCO sign-off.
 
+### Built by humans and agents, together
+
+This repo is designed to be developed by **people and LLM coding agents
+side by side** — most of its code is agent-authored. That shapes how it's
+built: conventions the standard tooling can only *suggest* are being
+converted into deterministic, machine-enforced guardrails (linting,
+architectural boundary checks, type-safety and test-adequacy gates), so a
+change can't merge while breaking the architecture regardless of who or what
+wrote it. That work is tracked in the
+[Guardrails & Governance milestone](https://github.com/medullaflow/ribosome/milestones).
+
+Agents working in this repo should read **[AGENTS.md](AGENTS.md)** first — the
+machine-readable operating contract (toolchain, setup, commands, and the hard
+constraints an agent can't infer from the code). It's the agent-facing
+counterpart to `CONTRIBUTING.md`.
+
 ## Why "ribosome"?
 
 Ribosomes are the cell's dependency materializers: they take a declaration
