@@ -7,7 +7,7 @@ Read [README.md](README.md) first — it describes ribosome's scope and design
 
 - **Primary Author**: Matteo Lacchio (original creator)
 - **Contributors**: Retain copyright of their own contributions, licensed under the same terms as the project
-- **License**: All contributions must be compatible with the GNU AGPLv3-or-later
+- **License**: All contributions must be compatible with the GNU AGPLv3-or-later. (The *standard* ribosome implements — schemas, conformance corpus — lives separately in [ribosome-schema](https://github.com/medullaflow/ribosome-schema), Apache-2.0; contribute there for schema changes.)
 
 ## Adding Yourself to AUTHORS
 
@@ -40,19 +40,51 @@ mismatched sign-offs block the merge. Fix an existing commit with
 `git commit --amend -s` (or `git rebase --exec 'git commit --amend --no-edit -s'`
 for a range), then force-push the PR branch.
 
+## Link commits to their issue
+
+Work is tracked as [GitHub issues under milestones](https://github.com/medullaflow/ribosome/milestones),
+not in a hand-kept file (see [ROADMAP.md](ROADMAP.md)) — so a commit is only
+traceable back to *why* it exists if it says so itself. Reference the issue
+in the commit body:
+
+    Refs #42
+
+or, when the commit is the complete fix for that issue:
+
+    Closes #42
+
+Both are plain git trailers — GitHub links the commit into the issue's
+timeline either way; `Closes`/`Fixes` on a commit that lands on `main` also
+closes the issue automatically. Prefer one issue per commit (or per tightly
+related group of commits) over a single commit spanning several unrelated
+issues — that's what keeps `git log --grep '#42'` and the issue's own
+timeline actually useful as an audit trail later, instead of every commit
+pointing at "various fixes."
+
+Not every commit needs a reference — a typo fix or a formatting pass has
+nothing to link to, and forcing one would just produce noise. Reference an
+issue when the commit *implements* or *advances* tracked work.
+
+`gh issue develop <number>` creates a branch already linked to an issue, if
+you'd rather have GitHub do the association than rely on the commit trailer
+alone.
+
 ## SPDX Headers & Git Hooks
 
 Every `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.scss` and `.css` file
 must carry an SPDX header (see `.github/HEADER_TEMPLATE.txt` for the exact
 format per file type).
 
-Running `npm install` once after cloning configures git to use the
+Running `bun install` once after cloning configures git to use the
 versioned hooks in `.githooks/` (via `core.hooksPath` — no husky, no extra
 dependency). From then on, `git commit` blocks if a staged source file is
 missing its header. Useful commands:
 
-    npm run spdx:check   # check every file in the repo
-    npm run spdx:fix     # insert missing headers automatically
+    bun run spdx:check   # check every file in the repo
+    bun run spdx:fix     # insert missing headers automatically
+
+This repo's toolchain is [bun](https://bun.sh) (install/build/test/compile),
+not Node — see [`docs/ARCHITECTURE.md` D14](docs/ARCHITECTURE.md#design-decisions).
 
 ## Why AGPL?
 
