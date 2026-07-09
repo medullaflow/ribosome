@@ -9,17 +9,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - run: node scripts/check-spdx-headers.js --all
+      - uses: oven-sh/setup-bun@v2
+      - run: bun scripts/check-spdx-headers.js --all
 
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
+      # ribosome depends on @medullaflow/ribosome-schema via a local `file:`
+      # link (see ROADMAP.md) until it's consumed as a published semver range
+      # instead — until then, CI needs a sibling checkout for `npm install` to
+      # resolve at all.
       - uses: actions/checkout@v4
+        with:
+          path: ribosome
+      - uses: actions/checkout@v4
+        with:
+          repository: medullaflow/ribosome-schema
+          path: ribosome-schema
+      # ribosome-schema is a plain npm library (no standalone-binary goal for
+      # it), so it stays on Node. ribosome itself runs entirely on bun — see
+      # docs/ARCHITECTURE.md D14 (compile-to-binary distribution, not Rust).
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: npm install
-      - run: npm run build
+      - uses: oven-sh/setup-bun@v2
+      - name: Install mise (for the MiseEnvironmentProvider integration test)
+        run: |
+          curl -fsSL https://mise.run | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Build ribosome-schema
+        working-directory: ribosome-schema
+        run: npm install && npm test
+      - name: Install, build and test ribosome
+        working-directory: ribosome
+        run: bun install && bun run test
+      - name: Compileability regression check (bun build --compile)
+        working-directory: ribosome
+        run: bun run compile
