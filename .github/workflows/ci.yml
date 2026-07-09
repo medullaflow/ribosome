@@ -19,40 +19,20 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       # Biome (lint + format + import-organize) in CI mode. Pinned to match the
       # @biomejs/biome devDependency in package.json — keep the two in sync.
-      # Run via bunx so this gate stays dependency-free: no `bun install`, which
-      # would otherwise need the ribosome-schema sibling checkout the file: dep
-      # requires, just to lint source text.
+      # Run via bunx rather than a full `bun install` — lint only needs source
+      # text, not the resolved dependency tree.
       - run: bunx @biomejs/biome@2.5.3 ci
 
   test:
     runs-on: ubuntu-latest
     steps:
-      # ribosome depends on @medullaflow/ribosome-schema via a local `file:`
-      # link (see ROADMAP.md) until it's consumed as a published semver range
-      # instead — until then, CI needs a sibling checkout for `bun install` to
-      # resolve at all.
       - uses: actions/checkout@v4
-        with:
-          path: ribosome
-      - uses: actions/checkout@v4
-        with:
-          repository: medullaflow/ribosome-schema
-          path: ribosome-schema
-      # Both repos run entirely on bun now (ribosome-schema migrated too, for
-      # consistency — see its own CHANGELOG); no Node needed in this job.
-      # ribosome's own standalone-binary goal is unrelated — see
-      # docs/ARCHITECTURE.md D14 (compile-to-binary distribution, not Rust).
       - uses: oven-sh/setup-bun@v2
       - name: Install mise (for the MiseEnvironmentProvider integration test)
         run: |
           curl -fsSL https://mise.run | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Build ribosome-schema
-        working-directory: ribosome-schema
-        run: bun install && bun run test
-      - name: Install, build and test ribosome
-        working-directory: ribosome
+      - name: Install, build and test
         run: bun install && bun run test
       - name: Compileability regression check (bun build --compile)
-        working-directory: ribosome
         run: bun run compile

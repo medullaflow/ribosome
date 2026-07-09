@@ -21,22 +21,10 @@ repo's tasks. (`tsc` is still the type-checker and still emits the portable
 `dist/` that downstream `npm install` consumers get — that's a consumer
 concern, not your toolchain.)
 
-## One-time setup you can't infer
-
-This repo depends on `@medullaflow/ribosome-schema` via a local `file:` link
-to a **sibling checkout**, not a published npm version. Both repos must sit
-side by side or `bun install` cannot resolve the dependency:
-
-```
-some-dir/
-├── ribosome/          (this repo)
-└── ribosome-schema/   (https://github.com/medullaflow/ribosome-schema)
-```
-
 ## Commands
 
 ```bash
-bun install       # installs deps, links the sibling schema repo, wires git hooks
+bun install       # installs deps (incl. @medullaflow/ribosome-schema from npm), wires git hooks
 bun run build     # tsc — type-check and emit dist/
 bun run test      # build, then run the full suite (incl. a live mise integration test)
 bun run compile   # bun build --compile — proves the standalone-binary path still works

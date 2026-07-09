@@ -103,8 +103,7 @@ the boundary: **[ribosome-schema](https://github.com/medullaflow/ribosome-schema
 (Apache-2.0) owns the normative JSON Schemas, the conformance corpus, and the
 TypeScript binding (`@medullaflow/ribosome-schema`); this repo (AGPL-3.0-or-later)
 owns everything downstream of that — ports, adapters, orchestrator — and
-depends on it as an ordinary npm dependency (currently a local `file:` link
-to a sibling checkout — see the [README](../README.md#development)). It
+depends on it as an ordinary published npm dependency (`^0.1.3`). It
 carries no schema and no conformance fixtures of its own. For anything about
 *how the standard itself* is versioned, vendored, or governed, that repo's
 own docs are the source, not this file.
@@ -298,17 +297,15 @@ determinism from the first resolve.
 ## Status
 
 - **Real, here:** the ports; the wiring that consumes `@medullaflow/ribosome-schema`
-  as a dependency (verified by `test/schema-dependency.test.js`); and
-  `MiseEnvironmentProvider` — `materialize()`/`composeView()`, integration-tested
+  as a published npm dependency, `^0.1.3` (verified by `test/schema-dependency.test.js`);
+  and `MiseEnvironmentProvider` — `materialize()`/`composeView()`, integration-tested
   against a real mise install, see `test/mise-environment-provider.test.js`
   (**Environment Provider** milestone, closed).
 - **Skeleton (stubs that throw `not implemented`), here:** the registry
   adapter and the orchestrator pipeline (**MCP Registry Adapter** and
   **Orchestrator Pipeline** milestones, open).
-- **Not yet done:** `@medullaflow/ribosome-schema` is consumed via a local
-  `file:` link, not a published npm version — tracked in the **Distribution**
-  milestone. The schema repo's own status (schemas, validation, conformance
-  corpus — all real and verified there) is that repo's own concern; see
+- The schema repo's own status (schemas, validation, conformance corpus —
+  all real and verified there) is that repo's own concern; see
   [its README](https://github.com/medullaflow/ribosome-schema#status).
 
 See the [README](../README.md) for usage and [ROADMAP.md](../ROADMAP.md) for

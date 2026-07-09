@@ -24,7 +24,7 @@
     "spdx:fix": "bun scripts/check-spdx-headers.js --fix"
   },
   "dependencies": {
-    "@medullaflow/ribosome-schema": "file:../ribosome-schema/bindings/typescript"
+    "@medullaflow/ribosome-schema": "^0.1.3"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.3",

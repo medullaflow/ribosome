@@ -45,9 +45,9 @@ JSON Schema files, no conformance fixtures** — see
 npm install @medullaflow/ribosome
 ```
 
-> Pre-alpha: not yet published (see [Status](#status)). During development,
-> this repo depends on `@medullaflow/ribosome-schema` via a local `file:`
-> reference to a sibling checkout — see [Development](#development).
+> Pre-alpha: not yet published (see [Status](#status)). `@medullaflow/ribosome-schema`,
+> the standard this repo implements, is already published — see
+> [Development](#development).
 
 ## The manifest — `ribosome.json`
 
@@ -157,19 +157,14 @@ adapter, and the phased orchestrator. See [ROADMAP.md](ROADMAP.md).
 
 ## Development
 
-This repo currently depends on `@medullaflow/ribosome-schema` via a local
-`file:` reference to a sibling checkout (not yet published to npm):
-
 ```bash
-# clone as a sibling directory:
-#   some-dir/
-#   ├── ribosome/          (this repo)
-#   └── ribosome-schema/   (https://github.com/medullaflow/ribosome-schema)
+git clone https://github.com/medullaflow/ribosome && cd ribosome
 
-bun install     # also wires the pre-commit SPDX-header check; links the sibling repo
+bun install     # also wires the pre-commit SPDX-header + lint check; @medullaflow/ribosome-schema resolves from npm
 bun run build   # tsc — still the type-checked source of dist/, the npm-embeddable artifact
 bun run test    # build, then run the real test suite (includes a live mise integration test)
 bun run compile # bun build --compile — proves the standalone-binary path still works
+bun run lint    # Biome — lint + format + import-organize check
 ```
 
 This repo's own dev/build/test toolchain runs entirely on **[bun](https://bun.sh)**,
