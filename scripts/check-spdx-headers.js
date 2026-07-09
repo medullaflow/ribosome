@@ -121,7 +121,7 @@ function main() {
   console.error(`\nEach source file must contain, within its first ${HEADER_SCAN_LINES} lines:`);
   console.error(`  SPDX-License-Identifier: ${LICENSE_ID}`);
   console.error('  SPDX-FileCopyrightText: © <year> <you, or "ribosome contributors">\n');
-  console.error("Run `npm run spdx:fix` to insert them automatically, then re-stage and commit.\n");
+  console.error("Run `bun run spdx:fix` to insert them automatically, then re-stage and commit.\n");
   process.exit(1);
 }
 

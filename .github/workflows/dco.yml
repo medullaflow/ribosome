@@ -4,16 +4,14 @@ on:
   pull_request:
 
 jobs:
-  check:
+  check-dco:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
+      - uses: oven-sh/setup-bun@v2
 
       - name: Check Signed-off-by on every commit
-        run: node scripts/check-dco.js ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}
+        run: bun scripts/check-dco.js ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}

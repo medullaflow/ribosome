@@ -6,7 +6,7 @@
 
 // Points git at the versioned .githooks/ directory instead of the
 // untracked, per-clone .git/hooks/. Runs from package.json's "prepare"
-// script, so it's set up automatically on `npm install` — no husky,
+// script, so it's set up automatically on `bun install` — no husky,
 // no extra dependency. No-ops silently outside a git checkout (e.g.
 // when this package is installed as a dependency).
 

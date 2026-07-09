@@ -11,4 +11,4 @@ Required header for every .css file (CSS has no line-comment syntax):
 /* SPDX-FileCopyrightText: © 2026 [YOUR NAME, or "ribosome contributors"] */
 
 Enforced by scripts/check-spdx-headers.js via the pre-commit hook in
-.githooks/. Run `npm run spdx:fix` to insert missing headers automatically.
+.githooks/. Run `bun run spdx:fix` to insert missing headers automatically.

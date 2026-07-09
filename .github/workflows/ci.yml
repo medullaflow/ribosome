@@ -29,7 +29,7 @@ jobs:
     steps:
       # ribosome depends on @medullaflow/ribosome-schema via a local `file:`
       # link (see ROADMAP.md) until it's consumed as a published semver range
-      # instead — until then, CI needs a sibling checkout for `npm install` to
+      # instead — until then, CI needs a sibling checkout for `bun install` to
       # resolve at all.
       - uses: actions/checkout@v4
         with:
@@ -38,12 +38,10 @@ jobs:
         with:
           repository: medullaflow/ribosome-schema
           path: ribosome-schema
-      # ribosome-schema is a plain npm library (no standalone-binary goal for
-      # it), so it stays on Node. ribosome itself runs entirely on bun — see
+      # Both repos run entirely on bun now (ribosome-schema migrated too, for
+      # consistency — see its own CHANGELOG); no Node needed in this job.
+      # ribosome's own standalone-binary goal is unrelated — see
       # docs/ARCHITECTURE.md D14 (compile-to-binary distribution, not Rust).
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
       - uses: oven-sh/setup-bun@v2
       - name: Install mise (for the MiseEnvironmentProvider integration test)
         run: |
@@ -51,7 +49,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Build ribosome-schema
         working-directory: ribosome-schema
-        run: npm install && npm test
+        run: bun install && bun run test
       - name: Install, build and test ribosome
         working-directory: ribosome
         run: bun install && bun run test
