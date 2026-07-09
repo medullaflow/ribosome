@@ -17,6 +17,9 @@ currently open, done, or next*.
 
 For a human or an agent landing in this repo with no GitHub access: the
 milestones as of this writing are **Environment Provider** (closed),
-**MCP Registry Adapter**, **Orchestrator Pipeline**, and **Distribution**
-(binary + npm library packaging) — but treat that list as a snapshot, not
+**MCP Registry Adapter**, **Orchestrator Pipeline**, **Distribution**
+(binary + npm library packaging), and **Guardrails & Governance**
+(converting documented conventions — lint, architectural boundaries,
+type/test adequacy — into machine-enforced checks, since most of this
+repo's code is agent-authored) — but treat that list as a snapshot, not
 a source of truth; the link above always wins.
