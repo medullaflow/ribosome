@@ -8,6 +8,14 @@ This project is licensed under the GNU Affero General Public License,
 version 3 (or, at your option, any later version) — the "AGPLv3-or-later".
 See the file LICENSE for the full license text.
 
+The ribosome STANDARD itself (the manifest/lockfile JSON Schemas and the
+conformance corpus) is a separate, Apache-2.0-licensed artifact, maintained in
+[ribosome-schema](https://github.com/medullaflow/ribosome-schema) and consumed
+here as an ordinary dependency (`@medullaflow/ribosome-schema`, see NOTICE's
+"THIRD-PARTY COMPONENTS" below). Implementing the `ribosome.json` standard in
+your own product does not touch this repo's code and creates no AGPL
+obligation — see that repo's own NOTICE.
+
 Unlike the plain GPL, the AGPL's copyleft also applies when the software
 (or a modified version of it) is used to provide a service over a network.
 If you run a modified version of ribosome and let others interact with
@@ -27,10 +35,21 @@ must retain:
                     THIRD-PARTY COMPONENTS
 ================================================================================
 
-None at this time. Add entries below as dependencies are introduced:
+--------------------------------------------------------------------------------
+@medullaflow/ribosome-schema
+--------------------------------------------------------------------------------
+Version: 0.1.0
+License: Apache-2.0
+Copyright: ribosome-schema contributors
+Location: package.json dependency (currently a local `file:` reference during
+  pre-alpha co-development; see ../ribosome-schema)
+Source: https://github.com/medullaflow/ribosome-schema
+
+Runtime/dev dependencies (typescript, @types/node) remain under their
+respective licenses; see package.json and node_modules/<pkg>/LICENSE.
 
 --------------------------------------------------------------------------------
-[LIBRARY NAME]
+[TEMPLATE — add new third-party components here]
 --------------------------------------------------------------------------------
 Version: X.Y.Z
 License: MIT/Apache/GPL/etc.

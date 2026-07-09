@@ -21,8 +21,9 @@ MAJOR CONTRIBUTORS
     - Feature implementation
 
 # =============================================================================
-# NOTE: Individual contributors retain copyright of their own contributions.
-#       For a complete, auto-generated list of all contributors, see the
-#       CONTRIBUTORS file (updated by CI from git history) or run:
-#       git shortlog -sne --all
+# NOTE: This file records principal authorship and copyright for the record;
+#       individual contributors retain copyright of their own contributions.
+#       For the complete contributor list, see the repository's Contributors
+#       graph on GitHub, or run locally:
+#           git shortlog -sne --all
 # =============================================================================

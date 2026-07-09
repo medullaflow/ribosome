@@ -4,19 +4,74 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+### Changed
+- **Split the standard into its own repo.** The manifest/lockfile JSON Schemas,
+  conformance corpus, and TypeScript binding moved to
+  [ribosome-schema](https://github.com/medullaflow/ribosome-schema)
+  (Apache-2.0), published as `@medullaflow/ribosome-schema`. This repo now
+  depends on it as an ordinary package (currently linked via `file:` to a
+  sibling checkout, pending a real npm publish) instead of owning the schema.
+  Rationale in [`docs/ARCHITECTURE.md` D13](docs/ARCHITECTURE.md#design-decisions).
+- **Reframed from "medullaflow extraction" to a standalone standard.** The
+  manifest is now an independent, versioned `ribosome.json` (source of truth),
+  not a hand-kept mirror of medullaflow's schema. Types are generated from the
+  schema, not the reverse.
+- Split the single `DependencyResolver` into a runtime port and a registry port;
+  runtime resolution is now an `EnvironmentProvider` (no mise/`binPath` coupling).
+- MCP server runtimes are derived from the registry `server.json`, not declared
+  by the user.
+- License simplified back to a single `AGPL-3.0-or-later` for this repo, now
+  that it carries no schema/fixture content (that split-licensing concern moved
+  to ribosome-schema).
+
 ### Added
-- Initial extraction from [medullaflow](https://github.com/medullaflow/medullaflow)'s
-  `packages/dependency-manager/` into a standalone package.
-- AGPLv3-or-later licensing scaffold: `LICENSE`, `COPYING.md`, `NOTICE`,
-  `AUTHORS`, SPDX headers on source files.
-- Pre-commit SPDX header enforcement — native git hook (`.githooks/pre-commit`)
-  wired via `core.hooksPath`, no husky/extra dependency.
-- `DependencyResolver` interface and `ResolvedDependencies` types (`src/core/resolver.ts`).
-- `DependenciesManifest` / `McpServerManifest` input types, mirroring medullaflow's
-  manifest schema (`src/core/manifest-types.ts`).
-- `MiseDependencyResolver`: concrete implementation wrapping mise-en-place (runtimes)
-  and the MCP Registry (MCP servers). Interface satisfied; method bodies are stubs
-  pending actual subprocess implementation (`src/mise/mise-resolver.ts`).
+- **Ports (`src/ports/`)** — `EnvironmentProvider` (env-delta abstraction,
+  backend-agnostic) and `McpRegistry`.
+- **Phase 1: `MiseEnvironmentProvider` is real.** `materialize()` resolves each
+  requirement via `mise install` → `mise where` (exact version) → `mise
+  bin-paths` (re-queried by the exact version, never the original spec),
+  concurrently, deduplicated into the pool by `(tool, exact version)`, with
+  aggregated failures. `composeView()` is synchronous, reading bin paths
+  cached from the same instance's last `materialize()` — no subprocesses.
+  Integration-tested against a real mise install (not mocked); CI installs
+  mise so the suite actually runs. See
+  [`docs/ARCHITECTURE.md` D14](docs/ARCHITECTURE.md#design-decisions) for why
+  distribution (no Node required to run ribosome) is solved by compiling to a
+  binary, not by a Rust rewrite.
+- **This repo's toolchain now runs on bun**, not Node (`bun install`/`build`/
+  `test`/`compile`; `tsc` unchanged as the type-checker and the source of the
+  plain, portable `dist/` that npm consumers get). `bun build --compile` is
+  wired up (`bun run compile`) and CI-checked as a compileability regression
+  guard — verified end-to-end: a compiled standalone binary, run with zero
+  bun/node on `PATH`, correctly drove `MiseEnvironmentProvider` through a real
+  `mise install`. CI (`ci.yml`) uses `oven-sh/setup-bun`; Node is kept only for
+  the `ribosome-schema` sibling checkout step (a plain npm library, no
+  standalone-binary goal of its own).
+- **Adapters (`src/adapters/`)** — `OfficialMcpRegistry` (skeleton), and a
+  real, pure runtime-derivation helper mapping `server.json` packages to
+  runtime requirements.
+- **Orchestrator (`src/orchestrator/`)** — `DependencyMaterializer` interface,
+  `Materializer`, and `ResolutionError` (aggregated failures).
+- **Docs** — rewritten `README.md`; [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+  with the architecture map, dependency rules, data model, phased pipeline, and
+  a design-decisions record; [`ROADMAP.md`](ROADMAP.md).
+- `test/schema-dependency.test.js` — integration smoke test proving the
+  `@medullaflow/ribosome-schema` dependency wiring works end-to-end.
+- `test/mise-environment-provider.test.js` — real mise integration tests.
+- CI (`ci.yml`) now actually runs `npm test` (it never did before), checks out
+  the `ribosome-schema` sibling the `file:` dependency needs, and installs mise.
+
+### Removed
+- `src/core/manifest-types.ts`, `src/core/resolver.ts`, `src/mise/mise-resolver.ts`
+  (superseded by the ports/adapters/orchestrator layers).
+- `src/spec/` and its associated scripts/tests, moved to the
+  [ribosome-schema](https://github.com/medullaflow/ribosome-schema) repo.
+- `REUSE.toml` and the Apache-2.0/MIT license texts (no longer needed here —
+  this repo is single-licensed AGPL again).
+
+### Licensing
+- AGPLv3-or-later scaffold: `LICENSE`, `COPYING.md`, `NOTICE`, `AUTHORS`, SPDX
+  headers; native pre-commit SPDX enforcement via `core.hooksPath`.
 
 ### Contributors
-- **Matteo Lacchio** — Initial extraction and scaffolding
+- **Matteo Lacchio** — Initial extraction, standardization, and architecture
