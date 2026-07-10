@@ -140,18 +140,27 @@ ribosome is a [ports & adapters](https://alistair.cockburn.us/hexagonal-architec
 
 ## Dependency rules
 
-These four rules keep the design decoupled. They are worth enforcing in review:
+These four rules keep the design decoupled. Rules 1-3 are mechanically
+enforced by the **architecture fitness function**
+(`scripts/check-architecture.js`, pre-commit + CI — see
+[#29](https://github.com/medullaflow/ribosome/issues/29)), which walks the
+real import graph and fails the build on a forbidden edge; rule 4 is a
+data-shape property, not an import-graph one, so it's covered instead by a
+behavioral test (`test/materializer.test.js`) plus the standard's own JSON
+Schema:
 
 1. **`ports/` imports nothing from `adapters/`.** Adapters import ports + the
    schema package; adapters never import each other. Neither imports anything
    from this repo *into* the schema package — that dependency only ever points
-   one way.
+   one way (this last clause isn't independently checkable from this repo's
+   own import graph — it's a property of ribosome-schema's repo instead).
 2. **The orchestrator receives adapters by constructor injection** (a
    `EnvironmentProvider` and a list of `McpRegistry`). It never constructs a
    concrete adapter. Default wiring lives *only* in `index.ts`.
 3. **The JSON Schema is authoritative; types are generated from it.** This is
    what lets other languages implement the standard — and it happens entirely
-   inside ribosome-schema, not here.
+   inside ribosome-schema, not here. Checked here as a proxy: no local
+   `*.schema.json` file anywhere in this repo.
 4. **The lockfile is declarative and portable.** No shell/activation snippets
    leak into it (see [the activation-hook boundary](#the-activation-hook-boundary)).
 
