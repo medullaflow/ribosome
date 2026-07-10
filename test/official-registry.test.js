@@ -32,6 +32,7 @@ const {
   RegistryUnreachableError,
   ServerNotFoundError,
   InvalidServerDescriptorError,
+  MissingRegistryCredentialError,
 } = require("../dist/index.js");
 
 const OFFICIAL_URL = "https://registry.modelcontextprotocol.io";
@@ -153,6 +154,75 @@ test("resolve() throws InvalidServerDescriptorError on a non-JSON body", async (
         return true;
       },
     );
+  } finally {
+    server.close();
+  }
+});
+
+test("resolve() sends every header declared in source.auth, value read from its named env var", async () => {
+  let receivedHeaders;
+  const server = http.createServer((req, res) => {
+    receivedHeaders = req.headers;
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({ server: { name: "com.example/x", description: "d", version: "1.0.0" } }),
+    );
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+
+  process.env.RIBOSOME_TEST_API_KEY = "secret-key-123";
+  process.env.RIBOSOME_TEST_TENANT_ID = "tenant-456";
+  try {
+    await new OfficialMcpRegistry().resolve({
+      name: "whatever",
+      source: {
+        type: "mcp-registry-v1",
+        url: `http://127.0.0.1:${port}`,
+        auth: [
+          { header: "X-API-Key", envVar: "RIBOSOME_TEST_API_KEY" },
+          { header: "X-Tenant-ID", envVar: "RIBOSOME_TEST_TENANT_ID" },
+        ],
+      },
+    });
+    assert.equal(receivedHeaders["x-api-key"], "secret-key-123");
+    assert.equal(receivedHeaders["x-tenant-id"], "tenant-456");
+  } finally {
+    delete process.env.RIBOSOME_TEST_API_KEY;
+    delete process.env.RIBOSOME_TEST_TENANT_ID;
+    server.close();
+  }
+});
+
+test("resolve() throws MissingRegistryCredentialError, without making any request, when the named env var isn't set", async () => {
+  let requestMade = false;
+  const server = http.createServer((_req, res) => {
+    requestMade = true;
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ server: {} }));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+
+  delete process.env.RIBOSOME_TEST_MISSING_VAR;
+  try {
+    await assert.rejects(
+      new OfficialMcpRegistry().resolve({
+        name: "whatever",
+        source: {
+          type: "mcp-registry-v1",
+          url: `http://127.0.0.1:${port}`,
+          auth: [{ header: "Authorization", envVar: "RIBOSOME_TEST_MISSING_VAR" }],
+        },
+      }),
+      (err) => {
+        assert.ok(err instanceof MissingRegistryCredentialError);
+        assert.equal(err.header, "Authorization");
+        assert.equal(err.envVar, "RIBOSOME_TEST_MISSING_VAR");
+        return true;
+      },
+    );
+    assert.equal(requestMade, false);
   } finally {
     server.close();
   }
