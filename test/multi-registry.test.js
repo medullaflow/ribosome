@@ -34,7 +34,14 @@ function hasNetworkAccess() {
 }
 
 const skip = !hasNetworkAccess();
-const testOpts = { skip: skip ? "registry.modelcontextprotocol.io unreachable" : false };
+// timeout comfortably above the adapter's own 10s resolve timeout -- bun
+// test --parallel now runs every test file concurrently, so this real HTTP
+// call can queue behind others under that concurrent load, not just behind
+// the adapter's own single-request timeout.
+const testOpts = {
+  skip: skip ? "registry.modelcontextprotocol.io unreachable" : false,
+  timeout: 20000,
+};
 
 test(
   "resolveMcpServer(): resolves from two distinct registries.sources (official + a local authenticated stand-in) in one run",
