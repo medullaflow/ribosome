@@ -47,6 +47,14 @@ test("inline source: unwraps .server, no adapter call needed", async () => {
   assert.deepEqual(result, { kind: "server-json", server: FAKE_SERVER_JSON, permissions: ["net"] });
 });
 
+test("inline source: throws when the inline server.json fails schema validation", async () => {
+  const malformed = { name: "com.example/malformed", description: "missing required version" };
+  await assert.rejects(
+    resolveMcpServer({ source: "inline", server: malformed }, { adapters: [] }),
+    /not a valid McpServerJson/,
+  );
+});
+
 test("process source: passes through unresolved, no adapter call needed", async () => {
   const processEntry = { source: "process", command: "npx", args: ["-y", "@foo/bar"] };
   const result = await resolveMcpServer(processEntry, { adapters: [] });

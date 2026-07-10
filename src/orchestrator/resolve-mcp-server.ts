@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: © 2026 ribosome contributors
 
 // Normalizes a manifest's three MCP server source kinds (registry | inline |
-// process) into one common shape before the phased pipeline (materializer.ts,
-// still a stub) takes over. Registry and inline sources converge on the same
-// server.json descriptor (a registry lookup resolves to exactly what an
+// process) into one common shape before the phased pipeline
+// (materializer.ts) takes over. Registry and inline sources converge on the
+// same server.json descriptor (a registry lookup resolves to exactly what an
 // inline server already carries); process sources carry no server.json at
 // all and pass through unresolved, per the manifest schema's own doc comment
 // on ProcessServer ("Not runtime-resolved by ribosome").
@@ -12,8 +12,17 @@
 // Deliberately stops here: deriving an actual runtime pool / launch command
 // from the "server-json" branch's `packages` is the phased pipeline's job
 // (see docs/ARCHITECTURE.md's Orchestrator Pipeline milestone), not this
-// normalization step's — that logic doesn't exist yet under any current
-// issue and shouldn't be invented as a side effect of this one.
+// normalization step's.
+//
+// The "inline" branch validates its server.json the same way a registry
+// adapter validates what it receives over the wire (checkMcpServerJson,
+// non-throwing so its errors can be aggregated like every other resolution
+// failure here, not raised as a standalone throw): a manifest is untrusted
+// input until validateManifest()/checkManifest() has run over it, and that
+// step lives upstream of this one (see docs/ARCHITECTURE.md's pipeline step
+// 1), not inside it — so a malformed inline server.json must still be
+// caught here rather than surfacing later as a confusing failure deep in
+// runtime-mapping/launch-mapping.
 
 import type {
   McpServer,
@@ -23,6 +32,7 @@ import type {
   RegistrySource,
   RibosomeManifest,
 } from "@medullaflow/ribosome-schema";
+import { checkMcpServerJson } from "@medullaflow/ribosome-schema";
 import type { McpRegistry } from "../ports/mcp-registry";
 
 /** Matches OfficialMcpRegistry.type — the implicit default when RegistrySource.type is omitted. */
@@ -86,8 +96,15 @@ export async function resolveMcpServer(
       const server = await adapter.resolve({ name: entry.name, version: entry.version, source });
       return { kind: "server-json", server, permissions: entry.permissions };
     }
-    case "inline":
+    case "inline": {
+      const { valid, errors } = checkMcpServerJson(entry.server);
+      if (!valid) {
+        throw new Error(
+          `inline server.json is not a valid McpServerJson:\n${errors.map((e) => `  - ${e}`).join("\n")}`,
+        );
+      }
       return { kind: "server-json", server: entry.server, permissions: entry.permissions };
+    }
     case "process":
       return { kind: "process", process: entry, permissions: entry.permissions };
   }
