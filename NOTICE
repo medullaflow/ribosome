@@ -4,32 +4,36 @@
 
 Copyright (C) 2026 Matteo Lacchio and Contributors
 
-This project is licensed under the GNU Affero General Public License,
-version 3 (or, at your option, any later version) — the "AGPLv3-or-later".
-See the file LICENSE for the full license text.
+This project is licensed under the Mozilla Public License, version 2.0
+(MPL-2.0) — see the file LICENSE for the full license text.
 
 The ribosome STANDARD itself (the manifest/lockfile JSON Schemas and the
 conformance corpus) is a separate, Apache-2.0-licensed artifact, maintained in
 [ribosome-schema](https://github.com/medullaflow/ribosome-schema) and consumed
 here as an ordinary dependency (`@medullaflow/ribosome-schema`, see NOTICE's
 "THIRD-PARTY COMPONENTS" below). Implementing the `ribosome.json` standard in
-your own product does not touch this repo's code and creates no AGPL
-obligation — see that repo's own NOTICE.
+your own product does not touch this repo's code and creates no copyleft
+obligation at all — see that repo's own NOTICE.
 
-Unlike the plain GPL, the AGPL's copyleft also applies when the software
-(or a modified version of it) is used to provide a service over a network.
-If you run a modified version of ribosome and let others interact with
-it remotely (e.g. as a hosted or SaaS offering), you must make the
-Corresponding Source of your modified version available to those users,
-under this same license (AGPLv3 §13). This applies whether or not you
-distribute any copies of the software itself.
+MPL-2.0 is file-level copyleft: if you modify a file that is part of this
+project ("Covered Software") and distribute that modified file — including
+embedded inside a larger, otherwise-proprietary product — you must make
+Your changes to that file available under MPL-2.0 (source form, via the
+file's own license notice or an equivalent mechanism). You are free to
+combine unmodified or modified Covered Software with code under any other
+license (including a proprietary one) in a "Larger Work"; only the
+Covered Software files themselves carry the copyleft, not the whole
+combination. Unlike the AGPL, MPL-2.0 has no separate network-service
+clause — running a modified version as a hosted/SaaS offering without
+distributing copies does not, by itself, trigger the source-sharing
+requirement.
 
-Any copy or modified version you distribute or run as a network service
-must retain:
+Any copy or modified version you distribute must retain:
   - the copyright notices in this file, in AUTHORS, and in the source
     headers;
   - a copy of, or link to, the LICENSE file;
-  - a clear statement of any changes you made (AGPLv3 §5).
+  - the MPL-2.0 notice on any file you modify, or an accurate alternate
+    notice that fulfills MPL-2.0 §3.4.
 
 ================================================================================
                     THIRD-PARTY COMPONENTS
@@ -38,11 +42,10 @@ must retain:
 --------------------------------------------------------------------------------
 @medullaflow/ribosome-schema
 --------------------------------------------------------------------------------
-Version: 0.1.0
+Version: ^0.1.3
 License: Apache-2.0
 Copyright: ribosome-schema contributors
-Location: package.json dependency (currently a local `file:` reference during
-  pre-alpha co-development; see ../ribosome-schema)
+Location: package.json dependency (published on npm)
 Source: https://github.com/medullaflow/ribosome-schema
 
 Runtime/dev dependencies (typescript, @types/node) remain under their

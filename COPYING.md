@@ -1,4 +1,4 @@
 # COPYING
 
-The GNU Affero General Public License, version 3 (or, at your option, any
-later version), text is provided in [`LICENSE`](LICENSE) in this repository.
+The Mozilla Public License, version 2.0, text is provided in
+[`LICENSE`](LICENSE) in this repository.

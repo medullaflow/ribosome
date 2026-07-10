@@ -7,7 +7,7 @@ Read [README.md](README.md) first — it describes ribosome's scope and design
 
 - **Primary Author**: Matteo Lacchio (original creator)
 - **Contributors**: Retain copyright of their own contributions, licensed under the same terms as the project
-- **License**: All contributions must be compatible with the GNU AGPLv3-or-later. (The *standard* ribosome implements — schemas, conformance corpus — lives separately in [ribosome-schema](https://github.com/medullaflow/ribosome-schema), Apache-2.0; contribute there for schema changes.)
+- **License**: All contributions must be compatible with MPL-2.0. (The *standard* ribosome implements — schemas, conformance corpus — lives separately in [ribosome-schema](https://github.com/medullaflow/ribosome-schema), Apache-2.0; contribute there for schema changes.)
 
 ## Adding Yourself to AUTHORS
 
@@ -19,9 +19,8 @@ Submit a PR adding yourself to `AUTHORS`:
 ## License Compliance
 
 By contributing, you agree that your contribution is licensed under the
-GNU Affero General Public License v3 (or, at your option, any later
-version) — the same license as the rest of the project. You retain
-copyright of your own contributions.
+Mozilla Public License, version 2.0 (MPL-2.0) — the same license as the
+rest of the project. You retain copyright of your own contributions.
 
 If your contribution includes code from a third-party library, note it
 in `NOTICE` along with that library's license.
@@ -86,15 +85,36 @@ missing its header. Useful commands:
 This repo's toolchain is [bun](https://bun.sh) (install/build/test/compile),
 not Node — see [`docs/ARCHITECTURE.md` D14](docs/ARCHITECTURE.md#design-decisions).
 
-## Why AGPL?
+## Why MPL-2.0?
 
-ribosome uses the AGPL (rather than the plain GPL) specifically so that anyone
-running a modified version as a network service must also publish their changes.
-If you're building on top of ribosome — including as part of a hosted product —
-please keep that in mind.
+ribosome is meant to be consumed two ways: as a CLI/binary people run directly,
+and as a library other orchestrators embed in their own products — including
+closed-source, commercial ones. Strong copyleft (GPL/AGPL) is a poor fit for
+the second case: under the classic GPL-family "derivative work" theory, a
+product that embeds AGPL-licensed code can be read as obligated to release its
+*entire* combined source, not just the parts that touch ribosome. For a
+project whose whole positioning is "conform on the config axis, compete on the
+runtime axis" (see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) — i.e. wants
+broad adoption of the resolver itself, not just the format — that's the wrong
+trade-off.
 
-This mirrors the license chosen for [medullaflow](https://github.com/medullaflow/medullaflow),
-the orchestrator ribosome was extracted from. See medullaflow's CONTRIBUTING.md
-for the full reasoning behind the AGPL choice over Apache 2.0.
+MPL-2.0 is copyleft at the **file level**: if you modify a file that's part of
+ribosome and distribute it — including embedded inside an otherwise-proprietary
+product — you must share your changes to *that file* under MPL-2.0. You are
+free to combine it with proprietary code in a larger work; only the files that
+were actually part of ribosome carry the obligation. That matches the actual
+goal: improvements to ribosome's own code come back to the project, without
+requiring anyone who embeds it to open their whole product. Unlike the AGPL,
+MPL-2.0 has no separate network-service clause — running a modified version
+as a hosted/SaaS offering, without distributing copies, does not by itself
+trigger the source-sharing requirement. That trade-off was made deliberately:
+see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#design-decisions) for the
+full reasoning and the alternatives considered (LGPL, permissive).
+
+This does **not** mirror [medullaflow](https://github.com/medullaflow/medullaflow)'s
+own license choice (AGPL) — that project is the orchestrator ribosome was
+originally extracted from, and its own licensing is a separate decision for
+its own maintainers; ribosome's fit as a widely-embeddable resolver library
+is different from medullaflow's fit as a hosted orchestrator product.
 
 Contact: https://github.com/medullaflow/ribosome/discussions

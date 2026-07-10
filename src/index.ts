@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: © 2026 ribosome contributors
 
 // Public API of @medullaflow/ribosome. Import from here, not from internal
@@ -8,8 +8,8 @@
 //   @medullaflow/ribosome-schema  the standard: schemas, generated types,
 //                                 validation, versions — a separate,
 //                                 Apache-2.0-licensed package/repo, so anyone
-//                                 can implement the standard without touching
-//                                 this package's AGPL code.
+//                                 can implement the standard without any
+//                                 copyleft obligation at all.
 //   ports/         abstractions: EnvironmentProvider, McpRegistry
 //   adapters/      concretions: mise, official MCP registry
 //   orchestrator/  the phased materialization pipeline

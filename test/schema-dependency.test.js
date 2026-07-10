@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: © 2026 ribosome contributors
 
 // The full manifest/lockfile conformance corpus now lives in the

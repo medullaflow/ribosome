@@ -8,7 +8,7 @@ shared pool and pinning everything into one reproducible lockfile — so missing
 tools or unresolvable servers fail at validation time, not mid-execution.
 
 [![CI](https://github.com/medullaflow/ribosome/actions/workflows/ci.yml/badge.svg)](https://github.com/medullaflow/ribosome/actions/workflows/ci.yml)
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPLv3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL--2.0-blue.svg)](https://www.mozilla.org/en-US/MPL/2.0/)
 [![Status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-orange.svg)](#status)
 
 ---
@@ -31,8 +31,9 @@ ribosome fills exactly that gap. It **conforms on the config axis** (its
   a conformance corpus, and a TypeScript binding. **Apache-2.0** — implement it
   in any product, open or closed, with no obligation.
 - **ribosome (this repo)** — the *reference resolver/orchestrator*: mise +
-  MCP registry adapters and the materialization pipeline. **AGPL-3.0-or-later**
-  — run a modified copy as a network service and you must share your changes.
+  MCP registry adapters and the materialization pipeline. **MPL-2.0** —
+  modify a file, share that file's changes; embed it in your own product,
+  proprietary or not, with no obligation on the rest of that product.
 
 ribosome depends on `@medullaflow/ribosome-schema` as an ordinary package, the
 same way it depends on any other library. This repo carries **no schema, no
@@ -199,11 +200,13 @@ Ribosomes are the cell's dependency materializers: they take a declaration
 
 ## Licensing
 
-AGPL-3.0-or-later — see [LICENSE](LICENSE) and [NOTICE](NOTICE). This repo is
-the reference *implementation*; the *standard* it implements
+MPL-2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE). File-level copyleft:
+modify a file, share that file's changes; embed ribosome in your own
+product, proprietary or not, with no obligation on the rest of it. This
+repo is the reference *implementation*; the *standard* it implements
 ([ribosome-schema](https://github.com/medullaflow/ribosome-schema)) is a
-separate Apache-2.0 repo with no such obligation. See
-[CONTRIBUTING.md](CONTRIBUTING.md#why-agpl) for the reasoning.
+separate Apache-2.0 repo with no obligation at all. See
+[CONTRIBUTING.md](CONTRIBUTING.md#why-mpl-20) for the full reasoning.
 
 ribosome is a component of the [medullaflow](https://github.com/medullaflow/medullaflow)
 project, designed to be reusable standalone.

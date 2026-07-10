@@ -2,12 +2,12 @@ Required header for every .ts / .tsx / .js / .jsx / .mjs / .cjs / .scss file
 (must appear within the first 10 lines — after a shebang or directive like
 "use client" is fine):
 
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: © 2026 [YOUR NAME, or "ribosome contributors"]
 
 Required header for every .css file (CSS has no line-comment syntax):
 
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* SPDX-License-Identifier: MPL-2.0 */
 /* SPDX-FileCopyrightText: © 2026 [YOUR NAME, or "ribosome contributors"] */
 
 Enforced by scripts/check-spdx-headers.js via the pre-commit hook in

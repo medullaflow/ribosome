@@ -17,13 +17,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   to `CONTRIBUTING.md`. README notes the human+agent development model.
 
 ### Changed
+- **Relicensed from `AGPL-3.0-or-later` to `MPL-2.0`.** ribosome is meant to
+  be consumed both as a CLI and as a library embedded in other (including
+  closed-source, commercial) orchestrators; strong copyleft actively worked
+  against that goal, since embedding AGPL code can be read as obligating a
+  consumer's entire product, not just the parts touching ribosome. MPL-2.0's
+  file-level copyleft gets the protection that was actually wanted — changes
+  to ribosome's own files come back — without that side effect. Every SPDX
+  header, `LICENSE`, `NOTICE`, and `package.json` updated accordingly; full
+  reasoning and alternatives considered (LGPL, permissive) in
+  [`docs/ARCHITECTURE.md` D18](docs/ARCHITECTURE.md#design-decisions).
 - **Split the standard into its own repo.** The manifest/lockfile JSON Schemas,
   conformance corpus, and TypeScript binding moved to
   [ribosome-schema](https://github.com/medullaflow/ribosome-schema)
   (Apache-2.0), published as `@medullaflow/ribosome-schema`. This repo now
-  depends on it as an ordinary package (currently linked via `file:` to a
-  sibling checkout, pending a real npm publish) instead of owning the schema.
-  Rationale in [`docs/ARCHITECTURE.md` D13](docs/ARCHITECTURE.md#design-decisions).
+  depends on it as an ordinary published package (`^0.1.3`) instead of owning
+  the schema. Rationale in
+  [`docs/ARCHITECTURE.md` D13](docs/ARCHITECTURE.md#design-decisions).
 - **Reframed from "medullaflow extraction" to a standalone standard.** The
   manifest is now an independent, versioned `ribosome.json` (source of truth),
   not a hand-kept mirror of medullaflow's schema. Types are generated from the
@@ -32,9 +42,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   runtime resolution is now an `EnvironmentProvider` (no mise/`binPath` coupling).
 - MCP server runtimes are derived from the registry `server.json`, not declared
   by the user.
-- License simplified back to a single `AGPL-3.0-or-later` for this repo, now
-  that it carries no schema/fixture content (that split-licensing concern moved
-  to ribosome-schema).
 
 ### Added
 - **Ports (`src/ports/`)** — `EnvironmentProvider` (env-delta abstraction,
@@ -79,10 +86,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 - `src/spec/` and its associated scripts/tests, moved to the
   [ribosome-schema](https://github.com/medullaflow/ribosome-schema) repo.
 - `REUSE.toml` and the Apache-2.0/MIT license texts (no longer needed here —
-  this repo is single-licensed AGPL again).
+  this repo is single-licensed again).
 
 ### Licensing
-- AGPLv3-or-later scaffold: `LICENSE`, `COPYING.md`, `NOTICE`, `AUTHORS`, SPDX
+- MPL-2.0 scaffold: `LICENSE`, `COPYING.md`, `NOTICE`, `AUTHORS`, SPDX
   headers; native pre-commit SPDX enforcement via `core.hooksPath`.
 
 ### Contributors

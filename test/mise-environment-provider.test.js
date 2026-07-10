@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: © 2026 ribosome contributors
 
 // Integration test against a REAL mise install (see Phase 1 acceptance

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // SPDX-FileCopyrightText: © 2026 Matteo Lacchio
 
 "use strict";
@@ -16,7 +16,7 @@ const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const LICENSE_ID = "AGPL-3.0-or-later";
+const LICENSE_ID = "MPL-2.0";
 const HEADER_SCAN_LINES = 10;
 const FALLBACK_HOLDER = "ribosome contributors";
 
