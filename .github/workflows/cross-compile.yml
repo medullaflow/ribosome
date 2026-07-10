@@ -1,0 +1,68 @@
+name: Cross-compile
+
+# Standalone, reusable job for #6: `bun build --compile --target=bun-<platform>`
+# cross-compiles genuine native executables for all five release targets from
+# a single ubuntu-latest runner -- no Windows or macOS runner needed for
+# compilation itself (only later, for OS-native packaging and for actually
+# running a cross-compiled binary on its target OS -- see the packaging and
+# verification-tier issues). `workflow_call` lets the future release workflow
+# (#14) invoke this as its first stage; `workflow_dispatch` lets it be run and
+# inspected on its own before that workflow exists.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  cross-compile:
+    name: Compile all 5 release targets on one Linux runner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+
+      - name: Compile linux-x64
+        run: bun build --compile --target=bun-linux-x64 bin/ribosome.ts --outfile dist/ribosome-linux-x64
+      - name: Compile linux-arm64
+        run: bun build --compile --target=bun-linux-arm64 bin/ribosome.ts --outfile dist/ribosome-linux-arm64
+      - name: Compile windows-x64
+        run: bun build --compile --target=bun-windows-x64 bin/ribosome.ts --outfile dist/ribosome-windows-x64.exe
+      - name: Compile darwin-x64
+        run: bun build --compile --target=bun-darwin-x64 bin/ribosome.ts --outfile dist/ribosome-darwin-x64
+      - name: Compile darwin-arm64
+        run: bun build --compile --target=bun-darwin-arm64 bin/ribosome.ts --outfile dist/ribosome-darwin-arm64
+
+      # Confirms each output is the correct native format for its target --
+      # not merely "the compiler didn't error" (the acceptance criterion this
+      # job exists to satisfy), by inspecting the actual file magic bytes.
+      - name: Verify each binary's native format
+        run: |
+          set -euo pipefail
+          check() {
+            local path="$1" expect="$2" actual
+            actual="$(file -b "$path")"
+            echo "$path: $actual"
+            case "$actual" in
+              *"$expect"*) ;;
+              *) echo "::error::$path is not '$expect' (got: $actual)"; exit 1 ;;
+            esac
+          }
+          check dist/ribosome-linux-x64      "ELF 64-bit LSB executable, x86-64"
+          check dist/ribosome-linux-arm64    "ELF 64-bit LSB executable, ARM aarch64"
+          check dist/ribosome-windows-x64.exe "PE32+ executable"
+          check dist/ribosome-darwin-x64      "Mach-O 64-bit x86_64 executable"
+          check dist/ribosome-darwin-arm64    "Mach-O 64-bit arm64 executable"
+
+      # One bundle, all five binaries -- what downstream per-target packaging
+      # jobs (installers/archives) consume; they never recompile.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ribosome-cross-compiled
+          path: |
+            dist/ribosome-linux-x64
+            dist/ribosome-linux-arm64
+            dist/ribosome-windows-x64.exe
+            dist/ribosome-darwin-x64
+            dist/ribosome-darwin-arm64
+          if-no-files-found: error
