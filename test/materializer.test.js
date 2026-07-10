@@ -200,3 +200,41 @@ test("materialize(): aggregates a registry-resolution failure and an environment
     return true;
   });
 });
+
+test("materialize(): reports every independent failure (registry lookup + inline validation + runtime provisioning) in one attempt, each tagged with its own manifest entry", async () => {
+  const registry = new FakeRegistry("mcp-registry-v1", {
+    bad: new Error("boom: registry lookup failed"),
+  });
+  const environmentProvider = new FakeEnvironmentProvider({ failTools: ["node"] });
+  const materializer = new Materializer({ environmentProvider, registries: [registry] });
+
+  const manifest = {
+    schemaVersion: "1",
+    registries: { default: "official", sources: { official: { url: "https://example.test" } } },
+    mcpServers: {
+      badRegistryServer: { source: "registry", name: "bad" },
+      badInlineServer: {
+        source: "inline",
+        server: { name: "com.example/malformed", description: "missing required version" },
+      },
+      goodServer: { source: "inline", server: SERVER_A },
+    },
+  };
+
+  await assert.rejects(materializer.materialize(manifest, { cwd: "/project" }), (err) => {
+    assert.ok(err instanceof ResolutionError);
+    assert.equal(
+      err.failures.length,
+      3,
+      "registry + inline validation + runtime, not just the first",
+    );
+
+    const byId = Object.fromEntries(err.failures.map((f) => [f.id, f]));
+    assert.equal(byId.badRegistryServer.kind, "mcpServer");
+    assert.match(byId.badRegistryServer.reason, /boom: registry lookup failed/);
+    assert.equal(byId.badInlineServer.kind, "mcpServer");
+    assert.match(byId.badInlineServer.reason, /not a valid McpServerJson/);
+    assert.equal(byId.node.kind, "runtime");
+    return true;
+  });
+});
