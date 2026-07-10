@@ -14,12 +14,23 @@
 //   5. compose isolated environment views (project + per server)
 //   6. assemble the lockfile, aggregating ALL failures
 //
-// Interface shape only for now: effectful phases delegate to ports whose bodies
-// are still stubs, so materialize() throws until adapters are implemented.
-
-import type { RibosomeLockfile, RibosomeManifest } from "@medullaflow/ribosome-schema";
-import type { EnvironmentProvider } from "../ports/environment-provider";
+import type {
+  Environment,
+  PooledRuntime,
+  ResolvedMcpServer,
+  RibosomeLockfile,
+  RibosomeManifest,
+} from "@medullaflow/ribosome-schema";
+import type {
+  EnvironmentDelta,
+  EnvironmentProvider,
+  RuntimeRequirement,
+} from "../ports/environment-provider";
 import type { McpRegistry } from "../ports/mcp-registry";
+import { deriveLaunch, deriveProcessLaunch } from "./launch-mapping";
+import type { RegistryResolutionContext, ResolvedMcpServerRef } from "./resolve-mcp-server";
+import { resolveMcpServer } from "./resolve-mcp-server";
+import { deriveRuntimeRequirements } from "./runtime-mapping";
 
 export interface MaterializeOptions {
   /** Project root — where the lockfile lives and backends anchor their work. */
@@ -69,6 +80,15 @@ export interface MaterializerDeps {
   registries: McpRegistry[];
 }
 
+/** Drop the port-internal `activationHook` -- the lockfile schema deliberately has no such field. */
+function toEnvironment(delta: EnvironmentDelta): Environment {
+  return { pathPrepend: delta.pathPrepend, envVars: delta.envVars };
+}
+
+function describeError(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 export class Materializer implements DependencyMaterializer {
   constructor(private readonly deps: MaterializerDeps) {}
 
@@ -76,11 +96,127 @@ export class Materializer implements DependencyMaterializer {
     manifest: RibosomeManifest,
     options: MaterializeOptions,
   ): Promise<RibosomeLockfile> {
-    void manifest;
-    void options;
-    void this.deps;
-    throw new Error(
-      "not implemented: phased resolution (registry/inline -> requirements -> pool -> views -> lockfile)",
+    const failures: ResolutionFailure[] = [];
+    const versionPolicy = manifest.runtimes ?? {};
+    const registryCtx: RegistryResolutionContext = {
+      registries: manifest.registries,
+      adapters: this.deps.registries,
+    };
+
+    // Phase 2: resolve each MCP server entry (registry | inline -> server-json, process -> passthrough).
+    const entries = Object.entries(manifest.mcpServers ?? {});
+    const settled = await Promise.allSettled(
+      entries.map(([, entry]) => resolveMcpServer(entry, registryCtx)),
     );
+    const resolved: { id: string; ref: ResolvedMcpServerRef }[] = [];
+    settled.forEach((result, i) => {
+      const [id] = entries[i];
+      if (result.status === "fulfilled") {
+        resolved.push({ id, ref: result.value });
+      } else {
+        failures.push({
+          kind: "mcpServer",
+          id,
+          reason: describeError(result.reason),
+          cause: result.reason,
+        });
+      }
+    });
+
+    // Phase 3a: derive per-server runtime requirements from the registry-determined
+    // packages (server-json branch only -- process servers carry no packages and
+    // run inside the project's own pool view instead, see the "process" branch below).
+    const requirementsById = new Map<string, RuntimeRequirement[]>();
+    for (const { id, ref } of resolved) {
+      requirementsById.set(
+        id,
+        ref.kind === "server-json" ? deriveRuntimeRequirements(ref.server, versionPolicy) : [],
+      );
+    }
+
+    // Phase 3b: merge the project's own declared runtimes (the version policy)
+    // with every server's derived requirements, deduped by tool -- two servers
+    // needing the same runtime must not provision it twice.
+    const projectRequirements: RuntimeRequirement[] = Object.entries(versionPolicy).map(
+      ([tool, versionSpec]) => ({ tool, versionSpec }),
+    );
+    const poolRequirementsByTool = new Map<string, RuntimeRequirement>();
+    for (const req of projectRequirements) poolRequirementsByTool.set(req.tool, req);
+    for (const reqs of requirementsById.values()) {
+      for (const req of reqs) {
+        if (!poolRequirementsByTool.has(req.tool)) poolRequirementsByTool.set(req.tool, req);
+      }
+    }
+    const poolRequirements = [...poolRequirementsByTool.values()];
+
+    // Phase 4: materialize the deduplicated pool. Even if some servers failed to
+    // resolve above, still attempt this so environment failures surface in the
+    // same pass instead of a fix-one-rerun loop.
+    let pool: PooledRuntime[] = [];
+    try {
+      pool = await this.deps.environmentProvider.materialize(poolRequirements, {
+        cwd: options.cwd,
+        refresh: options.refresh,
+      });
+    } catch (err) {
+      failures.push({
+        kind: "runtime",
+        id: poolRequirements.map((r) => r.tool).join(", ") || "(none)",
+        reason: describeError(err),
+        cause: err,
+      });
+    }
+
+    if (failures.length > 0) {
+      throw new ResolutionError(failures);
+    }
+
+    // Phase 5: compose isolated environment views -- the project's own, and one
+    // per server -- over the shared pool. Isolation at the view level,
+    // deduplication at the install level.
+    const poolIdsForTools = (tools: string[]): string[] => {
+      const wanted = new Set(tools);
+      return pool.filter((p) => wanted.has(p.tool)).map((p) => p.id);
+    };
+
+    const projectPoolIds = poolIdsForTools(projectRequirements.map((r) => r.tool));
+    const projectView = toEnvironment(
+      this.deps.environmentProvider.composeView(pool, projectPoolIds),
+    );
+
+    const mcpServers: ResolvedMcpServer[] = resolved.map(({ id, ref }) => {
+      if (ref.kind === "process") {
+        // Compatibility bridge: runs inside the project's own pool view, plus
+        // whatever env overrides the process entry itself declares.
+        return {
+          id,
+          uses: projectPoolIds,
+          launch: deriveProcessLaunch(ref.process),
+          environment: {
+            pathPrepend: projectView.pathPrepend,
+            envVars: { ...projectView.envVars, ...(ref.process.env ?? {}) },
+          },
+          permissions: ref.permissions,
+        };
+      }
+      const uses = poolIdsForTools((requirementsById.get(id) ?? []).map((r) => r.tool));
+      const environment = toEnvironment(this.deps.environmentProvider.composeView(pool, uses));
+      return {
+        id,
+        uses,
+        launch: deriveLaunch(ref.server),
+        environment,
+        permissions: ref.permissions,
+      };
+    });
+
+    // Phase 6: assemble the lockfile.
+    return {
+      schemaVersion: "1",
+      resolvedAt: new Date().toISOString(),
+      runtimePool: pool,
+      project: projectView,
+      mcpServers,
+    };
   }
 }
