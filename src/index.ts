@@ -29,6 +29,12 @@ export type {
   RuntimeRequirement,
 } from "./ports/environment-provider";
 export type { McpRegistry, RegistryQuery } from "./ports/mcp-registry";
+export {
+  InvalidServerDescriptorError,
+  McpRegistryError,
+  RegistryUnreachableError,
+  ServerNotFoundError,
+} from "./ports/mcp-registry";
 
 // ── Orchestrator ────────────────────────────────────────────────────────────
 export type {
@@ -38,8 +44,13 @@ export type {
   ResolutionFailure,
 } from "./orchestrator/materializer";
 export { Materializer, ResolutionError } from "./orchestrator/materializer";
+export { deriveRuntimeRequirements, toolForPackage } from "./orchestrator/runtime-mapping";
+export type {
+  RegistryResolutionContext,
+  ResolvedMcpServerRef,
+} from "./orchestrator/resolve-mcp-server";
+export { resolveMcpServer } from "./orchestrator/resolve-mcp-server";
 
 // ── Adapters (default wiring) ───────────────────────────────────────────────
 export { MiseEnvironmentProvider } from "./adapters/mise/mise-environment-provider";
 export { OfficialMcpRegistry } from "./adapters/mcp-registry/official-registry";
-export { deriveRuntimeRequirements, toolForPackage } from "./adapters/mcp-registry/runtime-mapping";

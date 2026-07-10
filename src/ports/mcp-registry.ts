@@ -21,9 +21,69 @@ export interface RegistryQuery {
  * Resolves a registry reference to a server.json document. One adapter per
  * registry protocol (keyed by `RegistrySource.type`). Inline (`source: inline`)
  * servers bypass this port entirely — they already carry their server.json.
+ *
+ * `resolve()` rejects with one of the typed errors below, never a generic
+ * `Error` — this is part of the port's contract, not just the official
+ * adapter's behavior, so any future registry adapter (GitHub, Microsoft, ...)
+ * and the orchestrator that catches these agree on the same failure shapes
+ * regardless of which adapter is plugged in.
  */
 export interface McpRegistry {
   /** The protocol this adapter speaks, matched against `RegistrySource.type`. */
   readonly type: string;
   resolve(query: RegistryQuery): Promise<McpServerJson>;
+}
+
+/** Base for every typed McpRegistry resolution failure. Carries the query that failed. */
+export abstract class McpRegistryError extends Error {
+  protected constructor(
+    readonly query: RegistryQuery,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/** The registry could not be reached at all — network failure, timeout, non-2xx/404 status. */
+export class RegistryUnreachableError extends McpRegistryError {
+  constructor(
+    query: RegistryQuery,
+    readonly cause: unknown,
+  ) {
+    super(
+      query,
+      `registry unreachable at "${query.source.url}" while resolving "${query.name}": ` +
+        (cause instanceof Error ? cause.message : String(cause)),
+    );
+    this.name = "RegistryUnreachableError";
+  }
+}
+
+/** The registry responded, but has no such server (or version) registered. */
+export class ServerNotFoundError extends McpRegistryError {
+  constructor(query: RegistryQuery) {
+    super(
+      query,
+      `"${query.name}@${query.version ?? "latest"}" not found in registry "${query.source.url}"`,
+    );
+    this.name = "ServerNotFoundError";
+  }
+}
+
+/**
+ * The registry responded with something that isn't a valid server.json — malformed
+ * JSON, or a document that fails validation against the standard's vendored schema.
+ */
+export class InvalidServerDescriptorError extends McpRegistryError {
+  constructor(
+    query: RegistryQuery,
+    readonly validationErrors: string[],
+  ) {
+    super(
+      query,
+      `"${query.name}" from registry "${query.source.url}" is not a valid server.json:\n` +
+        validationErrors.map((e) => `  - ${e}`).join("\n"),
+    );
+    this.name = "InvalidServerDescriptorError";
+  }
 }

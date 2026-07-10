@@ -6,19 +6,95 @@
 // one of the only two places in ribosome allowed to know a concrete MCP registry
 // exists (the other being any sibling adapter).
 //
-// Interface shape only for now: resolve() is a stub. Real work is an HTTP GET to
-// the source URL and mapping the response to a server.json document.
+// Deliberately a thin GET + validate, not a generated client: the only endpoint
+// this adapter needs is GET /v0.1/servers/{name}/versions/{version}, and its
+// response envelope is 3 fields (`server`, `_meta`) whose interesting part
+// (`server`) is already the vendored, runtime-validated McpServerJson shape.
+// Standing up an OpenAPI-vendor-and-codegen pipeline (most of that spec is
+// auth/publish/admin endpoints this read-only adapter never touches) for a
+// 3-field envelope would be disproportionate — this mirrors how McpServerJson
+// itself is hand-typed in ribosome-schema, not generated.
 
 import type { McpServerJson } from "@medullaflow/ribosome-schema";
-import type { McpRegistry, RegistryQuery } from "../../ports/mcp-registry";
+import { checkMcpServerJson } from "@medullaflow/ribosome-schema";
+import {
+  InvalidServerDescriptorError,
+  type McpRegistry,
+  type RegistryQuery,
+  RegistryUnreachableError,
+  ServerNotFoundError,
+} from "../../ports/mcp-registry";
+
+const RESOLVE_TIMEOUT_MS = 10_000;
+
+/** The registry's success envelope. `_meta` (registry-specific bookkeeping) is unused here. */
+interface ServerEnvelope {
+  server: unknown;
+}
+
+/** The registry's RFC 7807-shaped error envelope, read opportunistically for a better message. */
+interface ErrorEnvelope {
+  detail?: string;
+}
+
+function resolveUrl(query: RegistryQuery): string {
+  const base = query.source.url.replace(/\/+$/, "");
+  const name = encodeURIComponent(query.name);
+  const version = encodeURIComponent(query.version ?? "latest");
+  return `${base}/v0.1/servers/${name}/versions/${version}`;
+}
+
+async function readDetail(response: Response): Promise<string | undefined> {
+  try {
+    const body = (await response.json()) as ErrorEnvelope;
+    return body.detail;
+  } catch {
+    return undefined;
+  }
+}
 
 export class OfficialMcpRegistry implements McpRegistry {
   readonly type = "mcp-registry-v1";
 
   async resolve(query: RegistryQuery): Promise<McpServerJson> {
-    void query;
-    throw new Error(
-      "not implemented: HTTP lookup against RegistrySource.url, mapped to a server.json",
-    );
+    let response: Response;
+    try {
+      response = await fetch(resolveUrl(query), {
+        signal: AbortSignal.timeout(RESOLVE_TIMEOUT_MS),
+      });
+    } catch (cause) {
+      throw new RegistryUnreachableError(query, cause);
+    }
+
+    if (response.status === 404) {
+      throw new ServerNotFoundError(query);
+    }
+    if (!response.ok) {
+      const detail = await readDetail(response);
+      throw new RegistryUnreachableError(
+        query,
+        new Error(`HTTP ${response.status}${detail ? `: ${detail}` : ""}`),
+      );
+    }
+
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch (cause) {
+      throw new InvalidServerDescriptorError(query, [
+        `response body is not valid JSON: ${cause instanceof Error ? cause.message : String(cause)}`,
+      ]);
+    }
+
+    const envelope = body as Partial<ServerEnvelope> | null;
+    if (!envelope || typeof envelope !== "object" || !("server" in envelope)) {
+      throw new InvalidServerDescriptorError(query, ['response is missing a "server" field']);
+    }
+
+    const { valid, errors } = checkMcpServerJson(envelope.server);
+    if (!valid) {
+      throw new InvalidServerDescriptorError(query, errors);
+    }
+    return envelope.server as McpServerJson;
   }
 }

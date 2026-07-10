@@ -4,10 +4,15 @@
 // Derives runtime requirements from a resolved server.json. This is the concrete
 // realization of the rule "the registry determines the MCP server's runtime":
 // a package's `registryType`/`runtimeHint` implies the runtime family, and the
-// project's declared runtimes supply the version policy. Pure and adapter-shared.
+// project's declared runtimes supply the version policy. Pure orchestration
+// logic: it knows only the standard's own types (McpServerJson/McpPackage),
+// never a concrete registry or tool, so it lives here rather than under
+// adapters/ — the orchestrator may depend on it directly without violating
+// "orchestrator depends only on ports, never a concrete adapter" (see
+// docs/ARCHITECTURE.md's dependency rules).
 
 import type { McpPackage, McpServerJson } from "@medullaflow/ribosome-schema";
-import type { RuntimeRequirement } from "../../ports/environment-provider";
+import type { RuntimeRequirement } from "../ports/environment-provider";
 
 /** registryType / runtimeHint -> runtime tool family. */
 const REGISTRY_TYPE_TO_TOOL: Record<string, string> = {
