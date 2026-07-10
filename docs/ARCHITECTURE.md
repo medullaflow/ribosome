@@ -75,24 +75,28 @@ flowchart TD
     subgraph ADAPT["adapters · concretions"]
       MISEA["MiseEnvironmentProvider"]
       REGA["OfficialMcpRegistry"]
+      FILEA["FileMcpRegistry"]
     end
     SCHEMA[["ribosome-schema<br/>external · the standard"]]
     MISECLI[("mise CLI")]
     REGAPI[("MCP registries")]
+    LOCALFILE[("local servers.json")]
 
     IDX -->|injects| MAT
     MAT --> EP
     RESOLVE --> MR
     MISEA -. implements .-> EP
     REGA -. implements .-> MR
+    FILEA -. implements .-> MR
     MISEA -->|subprocess| MISECLI
     REGA -->|HTTP| REGAPI
+    FILEA -->|reads| LOCALFILE
     ORCH -->|npm dependency| SCHEMA
     PORTS -->|npm dependency| SCHEMA
     ADAPT -->|npm dependency| SCHEMA
 
     classDef ext fill:#eee,stroke:#999,color:#333;
-    class SCHEMA,MISECLI,REGAPI ext;
+    class SCHEMA,MISECLI,REGAPI,LOCALFILE ext;
 ```
 
 `runtime-mapping.ts`, `resolve-mcp-server.ts`, and `launch-mapping.ts` live in
@@ -130,7 +134,7 @@ ribosome is a [ports & adapters](https://alistair.cockburn.us/hexagonal-architec
 |-------|-------------|----------------|----------------|
 | **Spec** ([ribosome-schema](https://github.com/medullaflow/ribosome-schema), external) | Normative JSON Schemas + validation contract | validator (ajv), generated types, version pins | *The standard.* Source of truth for the manifest & lockfile formats. |
 | **Ports** (`src/ports/`) | `EnvironmentProvider`, `McpRegistry` (+ its typed failure classes) | — (interfaces only) | The seams the orchestrator depends on. |
-| **Adapters** (`src/adapters/`) | — | `MiseEnvironmentProvider`, `OfficialMcpRegistry` | The only code that knows mise / a concrete registry exists. |
+| **Adapters** (`src/adapters/`) | — | `MiseEnvironmentProvider`, `OfficialMcpRegistry`, `FileMcpRegistry` | The only code that knows mise / a concrete registry exists. |
 | **Orchestrator** (`src/orchestrator/`) | `DependencyMaterializer` | `Materializer` (stub), `resolveMcpServer()`, `deriveRuntimeRequirements()`, `deriveLaunch()` | Composes the layers into the phased pipeline; emits the lockfile. |
 
 ## Dependency rules
@@ -322,6 +326,7 @@ determinism from the first resolve.
 | D20 | Registry/inline/process sources normalize to a discriminated `ResolvedMcpServerRef`, not a single merged shape; the pure mapping logic that derives runtime requirements from a resolved descriptor lives in `orchestrator/`, not `adapters/` | Process-sourced servers structurally have no `server.json` — no `packages`, no registry-derived runtime info, "not runtime-resolved by ribosome" per the manifest schema's own doc comment — so forcing all three sources into one merged type would mean inventing fields for process that don't exist. A discriminated union (`{kind: "server-json", server}` for registry/inline — a registry lookup resolves to exactly what an inline server already carries — vs. `{kind: "process", process}` for pass-through) is honest about that structural difference instead of papering over it. Separately: `runtime-mapping.ts` (deriving `RuntimeRequirement[]` from a resolved `McpServerJson`) was relocated from `adapters/mcp-registry/` to `orchestrator/` before the normalization dispatcher (which needs it) was written — it is pure logic over the standard's own types, with zero knowledge of a concrete registry, but its old location under `adapters/` would have forced the orchestrator to import from `adapters/` directly, violating [dependency rule 1](#dependency-rules) (materializer.ts's own stated contract: "depends only on ports... never a concrete adapter"). Deliberately stops at the resolved descriptor: deriving an actual *launch* command (an executable argv or URL) from the server-json branch's `packages` is left to the Orchestrator Pipeline milestone — that logic (correct argument construction per package manager, choosing among multiple packages, precedence between local packages and remote endpoints) didn't have an owner under any existing issue, so it was filed as [#38](https://github.com/medullaflow/ribosome/issues/38) rather than invented as a side effect of this normalization step. |
 | D21 | `deriveLaunch()` supports only `npm`/`pypi` packages (plus remotes) for now; unsupported packages fail loudly, and an argument with no literal value throws rather than being silently omitted | `Launch` is a *required* field of every `ResolvedMcpServer` in the lockfile schema, so this — not [#23](https://github.com/medullaflow/ribosome/issues/23)'s pipeline skeleton — was the actual prerequisite for a schema-valid end-to-end lockfile, despite being filed after it; sequencing was corrected before implementation started rather than discovered mid-pipeline. Scope was set from a live sample of the real registry (100 servers fetched while designing this), not assumption: `runtimeHint` turned out to be absent on every sampled package (contradicts the one hand-picked example seen while building the registry adapter, which did set it), so a per-`registryType` default runtime bin is load-bearing, not an edge case. That same sample caught a real cross-type inconsistency before it became a bug: an `oci` package's `identifier` already embeds its version as an image tag (`docker.io/foo/bar:0.1.0`), unlike `npm`/`pypi` where version is a separate field — naively reusing one `identifier@version` template for every registry type would have silently produced a broken `...{tag}@{version}` reference the one time it mattered. `oci` is excluded outright rather than patched around that one issue, because a second, deeper problem sits behind it: a container is isolated from the host environment by design, so a package's declared `environmentVariables` would need to become `-e NAME` flags on the `docker run` command itself, not flow through ribosome's existing `EnvironmentProvider` env-var path — a real design question with no evidence-backed answer yet, left as an explicit gap rather than a guessed-at one. Throwing (not silently dropping) an argument with no literal `value` follows the project's own stated pitch of failing "at validation time, not mid-execution": a `Launch` missing a required token would look valid and fail only when an MCP client actually tries to run it. |
 | D22 | Multi-registry support needs no per-vendor adapter (GitHub/Microsoft/Anthropic); the real gap was per-source auth headers, not dispatch | Research into the actual MCP registry ecosystem (not assumption) found there is no enumerable list of "official" registries to hardcode: the model is deliberately federated — anyone can host a **subregistry** implementing the same v0.1 OpenAPI spec as the official one, discoverable only by documentation, not by any registry-of-registries API. `resolve-mcp-server.ts`'s `findAdapter()` already selects an `McpRegistry` by `RegistrySource.type`, not by URL, and `OfficialMcpRegistry.resolve()` already takes `query.source.url` per call — so a single adapter instance already serves any number of differently-URLed `registries.sources` entries of the same protocol type; nothing needed to change there. The one real, verified gap: PulseMCP, a real live subregistry (`api.pulsemcp.com`, publicly documented v0.1 API), mandates two auth headers (`X-API-Key`, `X-Tenant-ID`) that `RegistrySource` had no room for. Fixed by adding `RegistrySource.auth` upstream in `ribosome-schema` (an array of `{header, envVar}` pairs — the value is always read from the named environment variable at resolve time, never stored in the manifest, matching how a manifest is versioned/committed like a lockfile) and consuming it in `OfficialMcpRegistry.resolve()` ([#39](https://github.com/medullaflow/ribosome/issues/39)). A missing env var fails via the new `MissingRegistryCredentialError` *before* any request is sent — same "typed failure, not a generic throw" contract as the port's existing three errors, and deliberately not surfaced as `RegistryUnreachableError`: this is a caller-config problem caught up front, not a network failure. Proving this against PulseMCP for real (not just unit-tested locally) and adding a genuinely offline/local registry option are tracked separately ([#40](https://github.com/medullaflow/ribosome/issues/40), [#41](https://github.com/medullaflow/ribosome/issues/41), **Multi-Registry Support** milestone) rather than folded into this change. |
+| D23 | `FileMcpRegistry` reuses the official registry's `{ servers: [...] }` bulk-list envelope for its on-disk format, rather than a new one | A genuinely offline registry (no HTTP server running at all — distinct from pointing a URL at a self-hosted instance of the official binary, which already works via [D22](#design-decisions)) needs some on-disk shape. Reusing the exact envelope `GET /v0.1/servers` already returns means `curl .../v0.1/servers > servers.json` is directly usable offline, and lets the adapter reuse the same `checkMcpServerJson` validation path `OfficialMcpRegistry` already relies on — one fewer format to invent, document, or keep in sync. Selected via `RegistrySource.type: "file"`, `url` a `file:` URI (required to satisfy the schema's existing `format: "uri"` constraint on `RegistrySource.url` — a bare filesystem path would not validate); `findAdapter()` needs no changes, exactly as [D22](#design-decisions) predicted for any new adapter keyed by its own `type`. "Latest" version resolution (when `query.version` is omitted) uses a minimal dot-numeric comparator, not a full semver library — proportionate to a local/offline use case, not the general-purpose version resolution `EnvironmentProvider` already does for runtimes. |
 
 ## Status
 
@@ -342,11 +347,13 @@ determinism from the first resolve.
   `MissingRegistryCredentialError` before any request when one is unset
   ([#39](https://github.com/medullaflow/ribosome/issues/39), see
   [D22](#design-decisions)) — tested against a real local HTTP server, see
-  `test/official-registry.test.js`. Not yet done: proving this against a real,
-  independent, live subregistry rather than a local stand-in
-  ([#40](https://github.com/medullaflow/ribosome/issues/40)), and a genuinely
-  offline/local registry adapter ([#41](https://github.com/medullaflow/ribosome/issues/41))
-  — both open in the **Multi-Registry Support** milestone.
+  `test/official-registry.test.js`; and `FileMcpRegistry`, an offline/local
+  registry backed by a file on disk ([#41](https://github.com/medullaflow/ribosome/issues/41),
+  see [D23](#design-decisions)) — tested against a real fixture file, see
+  `test/file-registry.test.js`. Not yet done: proving multi-registry
+  dispatch and auth against a real, independent, live subregistry rather
+  than a local stand-in ([#40](https://github.com/medullaflow/ribosome/issues/40),
+  **Multi-Registry Support** milestone).
 - **Skeleton (stubs that throw `not implemented`), here:** the phased
   pipeline itself — dedup, pooling, environment views, and lockfile assembly,
   the four remaining open issues in the **Orchestrator Pipeline** milestone.
