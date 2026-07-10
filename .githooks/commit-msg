@@ -1,0 +1,15 @@
+#!/bin/sh
+# Native git hook, versioned in .githooks/ and wired via `core.hooksPath`
+# (see scripts/setup-git-hooks.js). Fast local half of the DCO check (#32):
+# catches a missing `Signed-off-by` trailer before you push, instead of only
+# in CI (.github/workflows/dco.yml, the authoritative check across a whole
+# PR's commit range -- see CONTRIBUTING.md). Run `git commit -s`.
+
+msg_file="$1"
+email="$(git config user.email)"
+
+if ! grep -qF "Signed-off-by:" "$msg_file" || ! grep -qF "<$email>" "$msg_file"; then
+  echo "error: commit message is missing a 'Signed-off-by: ... <$email>' trailer." >&2
+  echo "Run \`git commit -s\` -- see CONTRIBUTING.md." >&2
+  exit 1
+fi
