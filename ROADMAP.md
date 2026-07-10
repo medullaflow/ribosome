@@ -19,9 +19,11 @@ For a human or an agent landing in this repo with no GitHub access: the
 milestones as of this writing are **Environment Provider** (closed),
 **MCP Registry Adapter** (closed), **Multi-Registry Support** (closed —
 per-source auth headers, an offline/local registry adapter, and proven
-multi-source dispatch), **Orchestrator Pipeline** (in progress — the phased
-manifest-to-lockfile pipeline), **Distribution** (binary + npm library
-packaging), and **Guardrails & Governance** (converting documented
+multi-source dispatch), **Orchestrator Pipeline** (closed — the phased
+manifest-to-lockfile pipeline, aggregate-all-failures, lockfile-writing
+effects layer, and the cross-milestone convergence check against a real
+registry + real environment provider), **Distribution** (binary + npm
+library packaging), and **Guardrails & Governance** (converting documented
 conventions — lint, architectural boundaries, type/test adequacy — into
 machine-enforced checks, since most of this repo's code is agent-authored) —
 but treat that list as a snapshot, not a source of truth; the link above
