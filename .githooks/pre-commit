@@ -1,11 +1,11 @@
 #!/bin/sh
 # Native git hook, versioned in .githooks/ and wired via `core.hooksPath`
 # (see scripts/setup-git-hooks.js, run automatically by `bun install`).
-# Blocks commits that break SPDX headers or Biome lint/format on staged files.
+# Single entry point for every deterministic guardrail on staged files (#32):
+# SPDX headers, Biome, and the typecheck, all via scripts/check.js -- bun end
+# to end, no Node dependency (the previous `node scripts/...` call here was
+# the one remaining Node dependency in an otherwise all-bun toolchain).
 
 set -e
 
-node scripts/check-spdx-headers.js
-# Local Biome binary (node shebang), so the hook works even where `bun`/`bunx`
-# isn't on PATH. Requires `bun install` to have run — which also wires this hook.
-./node_modules/.bin/biome check --staged --no-errors-on-unmatched
+bun scripts/check.js --staged

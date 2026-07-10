@@ -33,12 +33,16 @@ bun run lint:fix  # Biome check --write — auto-fix everything fixable
 bun run format    # Biome format --write — reformat only
 bun run spdx:check   # verify SPDX headers on all source files
 bun run spdx:fix     # insert any missing SPDX headers
+bun run check         # every deterministic guardrail (spdx + lint + typecheck), whole tree
+bun run check:staged  # same, scoped to staged files — what the pre-commit hook runs
 ```
 
 The mise integration test self-skips if `mise` isn't on `PATH`; CI installs
-mise so it runs for real there. **Run `bun run lint:fix` before committing** —
-lint and formatting are enforced (pre-commit + CI), so unformatted or
-lint-failing code will not merge.
+mise so it runs for real there. **Run `bun run check` before committing** (or
+just commit — the pre-commit hook runs `check:staged` for you, and a
+`commit-msg` hook checks the DCO trailer) — lint, formatting, SPDX headers,
+and the typecheck are enforced (pre-commit + CI), so broken code will not
+merge.
 
 ## Hard constraints
 
@@ -52,8 +56,12 @@ don't rely on that lasting.
 - **SPDX headers** on every `.ts`/`.tsx`/`.js`/`.jsx`/`.mjs`/`.cjs`/`.scss`/`.css`
   file (see `.github/HEADER_TEMPLATE.txt` for the exact per-type format).
   *Enforced* — pre-commit hook + CI. Run `bun run spdx:fix` if you add a file.
+- **Typecheck** (`tsc`, `strict`). *Enforced* — pre-commit hook (whole
+  program — `tsc` has no staged-file mode) + CI (`bun run test`).
 - **DCO sign-off** on every commit (`git commit -s`, a `Signed-off-by`
-  trailer matching the committer's email). *Enforced* — CI (`dco.yml`).
+  trailer matching the committer's email). *Enforced* — a local
+  `commit-msg` hook gives fast feedback; CI (`dco.yml`) is the authoritative
+  check across a PR's whole commit range.
 - **Hexagonal dependency rules** (see below). *Convention only* — an
   automated fitness function is tracked in
   [#29](https://github.com/medullaflow/ribosome/issues/29); until then these
