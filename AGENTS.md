@@ -90,6 +90,7 @@ src/orchestrator/  the phased materialization pipeline
 src/index.ts       the public API surface + default wiring (the only place wiring lives)
 test/              the test suite
 docs/ARCHITECTURE.md   design, dependency rules, decision log (D1–D17)
+docs/API.md            the versioned library integration contract (what src/index.ts exports, and why)
 ```
 
 Planned work is tracked as
