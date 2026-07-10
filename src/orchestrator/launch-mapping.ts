@@ -24,7 +24,13 @@
 // design question, not a detail, so it's tracked as its own follow-up
 // (see #38's own PR/issue thread) rather than guessed at here.
 
-import type { Launch, McpArgument, McpPackage, McpServerJson } from "@medullaflow/ribosome-schema";
+import type {
+  Launch,
+  McpArgument,
+  McpPackage,
+  McpServerJson,
+  ProcessServer,
+} from "@medullaflow/ribosome-schema";
 
 /** registryType -> default runtime binary, used when a package sets no explicit runtimeHint. */
 const DEFAULT_RUNTIME_BIN: Record<string, string> = {
@@ -85,4 +91,21 @@ export function deriveLaunch(server: McpServerJson): Launch {
       ? `server "${server.name}" only declares packages of unsupported registryType(s) (${packageTypes.join(", ")}) and no remotes`
       : `server "${server.name}" declares neither packages nor remotes -- nothing to launch`,
   );
+}
+
+/**
+ * Derive a Launch directly from a manifest's raw `process` entry -- the
+ * compatibility-bridge source that already carries its own
+ * {command, args, transport, url} rather than a server.json to interpret.
+ * Defaults to stdio, matching ProcessServer's own doc comment
+ * ("field-compatible with .mcp.json").
+ */
+export function deriveProcessLaunch(entry: ProcessServer): Launch {
+  if (entry.transport === "http") {
+    if (!entry.url) {
+      throw new Error('process server has transport "http" but declares no url');
+    }
+    return { transport: "http", url: entry.url };
+  }
+  return { transport: "stdio", command: [entry.command, ...(entry.args ?? [])] };
 }
