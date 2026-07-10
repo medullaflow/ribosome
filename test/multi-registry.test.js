@@ -1,0 +1,101 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: © 2026 ribosome contributors
+
+// Proves multi-source registry dispatch end-to-end through resolveMcpServer():
+// two distinct `registries.sources` entries, both of type "mcp-registry-v1",
+// resolved via the same shared OfficialMcpRegistry adapter instance in one
+// run -- the official live registry (real HTTP, skipped if unreachable, same
+// hasNetworkAccess() guard as official-registry.test.js) plus a local
+// throwaway HTTP server that requires an auth header, standing in for a real
+// independent authenticated subregistry (e.g. PulseMCP) without depending on
+// any third-party account/API key. See #40 for why this was descoped from a
+// real external subregistry.
+
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const http = require("node:http");
+const { execFileSync } = require("node:child_process");
+
+const { OfficialMcpRegistry, resolveMcpServer } = require("../dist/index.js");
+
+const OFFICIAL_URL = "https://registry.modelcontextprotocol.io";
+const KNOWN_SERVER = { name: "com.pulsemcp/remote-filesystem", version: "0.1.2" };
+const LOCAL_AUTH_TOKEN = "local-test-token-abc123";
+
+function hasNetworkAccess() {
+  try {
+    execFileSync("curl", ["-fsS", "--max-time", "5", `${OFFICIAL_URL}/v0.1/health`], {
+      stdio: "ignore",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const skip = !hasNetworkAccess();
+const testOpts = { skip: skip ? "registry.modelcontextprotocol.io unreachable" : false };
+
+test(
+  "resolveMcpServer(): resolves from two distinct registries.sources (official + a local authenticated stand-in) in one run",
+  testOpts,
+  async () => {
+    const localServer = http.createServer((req, res) => {
+      if (req.headers.authorization !== `Bearer ${LOCAL_AUTH_TOKEN}`) {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ detail: "unauthorized" }));
+        return;
+      }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          server: { name: "com.example/local-auth-test", description: "d", version: "1.0.0" },
+        }),
+      );
+    });
+    await new Promise((resolve) => localServer.listen(0, "127.0.0.1", resolve));
+    const { port } = localServer.address();
+
+    process.env.RIBOSOME_TEST_LOCAL_AUTH_TOKEN = `Bearer ${LOCAL_AUTH_TOKEN}`;
+    try {
+      const ctx = {
+        registries: {
+          default: "official",
+          sources: {
+            official: { type: "mcp-registry-v1", url: OFFICIAL_URL },
+            local: {
+              type: "mcp-registry-v1",
+              url: `http://127.0.0.1:${port}`,
+              auth: [{ header: "Authorization", envVar: "RIBOSOME_TEST_LOCAL_AUTH_TOKEN" }],
+            },
+          },
+        },
+        adapters: [new OfficialMcpRegistry()],
+      };
+
+      const [official, local] = await Promise.all([
+        resolveMcpServer(
+          {
+            source: "registry",
+            registry: "official",
+            name: KNOWN_SERVER.name,
+            version: KNOWN_SERVER.version,
+          },
+          ctx,
+        ),
+        resolveMcpServer(
+          { source: "registry", registry: "local", name: "com.example/local-auth-test" },
+          ctx,
+        ),
+      ]);
+
+      assert.equal(official.kind, "server-json");
+      assert.equal(official.server.name, KNOWN_SERVER.name);
+      assert.equal(local.kind, "server-json");
+      assert.equal(local.server.name, "com.example/local-auth-test");
+    } finally {
+      delete process.env.RIBOSOME_TEST_LOCAL_AUTH_TOKEN;
+      localServer.close();
+    }
+  },
+);
