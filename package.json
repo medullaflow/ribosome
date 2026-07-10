@@ -23,7 +23,8 @@
     "spdx:check": "bun scripts/check-spdx-headers.js --all",
     "spdx:fix": "bun scripts/check-spdx-headers.js --fix",
     "check": "bun scripts/check.js",
-    "check:staged": "bun scripts/check.js --staged"
+    "check:staged": "bun scripts/check.js --staged",
+    "check:architecture": "bun scripts/check-architecture.js"
   },
   "dependencies": {
     "@medullaflow/ribosome-schema": "^0.1.8"

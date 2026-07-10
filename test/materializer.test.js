@@ -137,6 +137,34 @@ test("materialize(): isolates each server's composed environment view despite th
   assert.ok(lockfile.project.pathPrepend.some((p) => p.includes("jq")));
 });
 
+// Dependency rule 4 (docs/ARCHITECTURE.md#dependency-rules): the lockfile is
+// declarative and portable -- no shell/activation snippets leak into it. This
+// is a data-shape property, not an import-graph one, so unlike rules 1-3 it's
+// not covered by the architecture fitness function (test/architecture-fitness.test.js) --
+// it's enforced here, behaviorally, plus structurally by the standard's own
+// JSON Schema (Environment has `additionalProperties: false` and no
+// `activationHook` field at all -- see @medullaflow/ribosome-schema).
+test("materialize(): strips the port-internal activationHook from every environment view (dependency rule 4)", async () => {
+  class ActivationHookLeakingProvider extends FakeEnvironmentProvider {
+    composeView(pool, select) {
+      return { ...super.composeView(pool, select), activationHook: "source /some/activate.sh" };
+    }
+  }
+
+  const environmentProvider = new ActivationHookLeakingProvider();
+  const materializer = new Materializer({ environmentProvider, registries: [] });
+
+  const lockfile = await materializer.materialize(baseManifest(), { cwd: "/project" });
+
+  assert.ok(!("activationHook" in lockfile.project));
+  for (const server of lockfile.mcpServers) {
+    assert.ok(
+      !("activationHook" in server.environment),
+      `${server.id}'s environment leaked activationHook`,
+    );
+  }
+});
+
 test("materialize(): a process entry runs inside the project's own pool view plus its own env overrides", async () => {
   const environmentProvider = new FakeEnvironmentProvider();
   const materializer = new Materializer({ environmentProvider, registries: [] });

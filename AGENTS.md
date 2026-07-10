@@ -33,8 +33,10 @@ bun run lint:fix  # Biome check --write — auto-fix everything fixable
 bun run format    # Biome format --write — reformat only
 bun run spdx:check   # verify SPDX headers on all source files
 bun run spdx:fix     # insert any missing SPDX headers
-bun run check         # every deterministic guardrail (spdx + lint + typecheck), whole tree
-bun run check:staged  # same, scoped to staged files — what the pre-commit hook runs
+bun run check              # every deterministic guardrail (spdx + lint + typecheck + architecture), whole tree
+bun run check:staged       # same command; spdx/lint scoped to staged files (typecheck and the
+                           # architecture check have no staged-file mode, so they always run whole-program)
+bun run check:architecture # just the architecture fitness function (#29)
 ```
 
 The mise integration test self-skips if `mise` isn't on `PATH`; CI installs
@@ -62,10 +64,10 @@ don't rely on that lasting.
   trailer matching the committer's email). *Enforced* — a local
   `commit-msg` hook gives fast feedback; CI (`dco.yml`) is the authoritative
   check across a PR's whole commit range.
-- **Hexagonal dependency rules** (see below). *Convention only* — an
-  automated fitness function is tracked in
-  [#29](https://github.com/medullaflow/ribosome/issues/29); until then these
-  are your responsibility to honor by hand.
+- **Hexagonal dependency rules** (see below). *Enforced* for rules 1-3 —
+  pre-commit hook + CI (`scripts/check-architecture.js`, #29). Rule 4 is a
+  data-shape property, not an import-graph one; it's enforced separately (the
+  standard's own JSON Schema + a behavioral test in `materializer.test.js`).
 - **Commit ↔ issue linkage.** Reference the issue a commit advances with a
   `Refs #N` trailer, or `Closes #N` when the commit fully resolves it (see
   [CONTRIBUTING.md](CONTRIBUTING.md#link-commits-to-their-issue)).
@@ -76,9 +78,9 @@ don't rely on that lasting.
 
 This is a [ports & adapters](https://alistair.cockburn.us/hexagonal-architecture/)
 design. Full reasoning and diagrams: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-The four rules that keep it decoupled — **honor these by hand until
-[#29](https://github.com/medullaflow/ribosome/issues/29) makes them
-mechanical**:
+The four rules that keep it decoupled — **rules 1-3 are mechanically
+enforced** (`scripts/check-architecture.js`, #29); rule 4 is a behavioral
+test, not a lint rule:
 
 1. `src/ports/` imports nothing from `src/adapters/`. Adapters import ports +
    the schema package; **adapters never import each other**.
