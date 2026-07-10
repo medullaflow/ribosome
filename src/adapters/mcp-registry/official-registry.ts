@@ -20,6 +20,7 @@ import { checkMcpServerJson } from "@medullaflow/ribosome-schema";
 import {
   InvalidServerDescriptorError,
   type McpRegistry,
+  MissingRegistryCredentialError,
   type RegistryQuery,
   RegistryUnreachableError,
   ServerNotFoundError,
@@ -53,13 +54,35 @@ async function readDetail(response: Response): Promise<string | undefined> {
   }
 }
 
+/**
+ * Builds the headers `source.auth` declares, reading each value from its
+ * named environment variable. Checked up front, before any request is sent —
+ * a misconfigured/missing credential is a caller-config problem, not a
+ * network failure, and sending the request anyway would only trade a clear
+ * error for a confusing 401 from the registry.
+ */
+function authHeaders(query: RegistryQuery): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const { header, envVar } of query.source.auth ?? []) {
+    const value = process.env[envVar];
+    if (value === undefined) {
+      throw new MissingRegistryCredentialError(query, header, envVar);
+    }
+    headers[header] = value;
+  }
+  return headers;
+}
+
 export class OfficialMcpRegistry implements McpRegistry {
   readonly type = "mcp-registry-v1";
 
   async resolve(query: RegistryQuery): Promise<McpServerJson> {
+    const headers = authHeaders(query);
+
     let response: Response;
     try {
       response = await fetch(resolveUrl(query), {
+        headers,
         signal: AbortSignal.timeout(RESOLVE_TIMEOUT_MS),
       });
     } catch (cause) {

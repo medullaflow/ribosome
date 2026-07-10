@@ -87,3 +87,24 @@ export class InvalidServerDescriptorError extends McpRegistryError {
     this.name = "InvalidServerDescriptorError";
   }
 }
+
+/**
+ * `query.source.auth` names an environment variable to read a header's value
+ * from, but it isn't set. Distinct from `RegistryUnreachableError`: this is a
+ * caller-config problem caught before any request is made, not a network
+ * failure — sending the request anyway would just produce a confusing 401
+ * from the registry instead of a clear answer about what's actually missing.
+ */
+export class MissingRegistryCredentialError extends McpRegistryError {
+  constructor(
+    query: RegistryQuery,
+    readonly header: string,
+    readonly envVar: string,
+  ) {
+    super(
+      query,
+      `registry "${query.source.url}" requires header "${header}", but environment variable "${envVar}" is not set`,
+    );
+    this.name = "MissingRegistryCredentialError";
+  }
+}

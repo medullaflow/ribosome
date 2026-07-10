@@ -32,6 +32,7 @@ export type { McpRegistry, RegistryQuery } from "./ports/mcp-registry";
 export {
   InvalidServerDescriptorError,
   McpRegistryError,
+  MissingRegistryCredentialError,
   RegistryUnreachableError,
   ServerNotFoundError,
 } from "./ports/mcp-registry";
