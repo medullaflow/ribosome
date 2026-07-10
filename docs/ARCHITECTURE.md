@@ -67,6 +67,7 @@ flowchart TD
       RESOLVE["resolveMcpServer()<br/>source normalization"]
       RTMAP["runtime-mapping.ts<br/>server.json → RuntimeRequirement[]"]
       LAUNCH["launch-mapping.ts<br/>server.json → Launch"]
+      WRITE["lockfile-writer.ts<br/>writeLockfile() — the one fs write"]
     end
     subgraph PORTS["ports · abstractions"]
       EP["EnvironmentProvider"]
@@ -135,7 +136,7 @@ ribosome is a [ports & adapters](https://alistair.cockburn.us/hexagonal-architec
 | **Spec** ([ribosome-schema](https://github.com/medullaflow/ribosome-schema), external) | Normative JSON Schemas + validation contract | validator (ajv), generated types, version pins | *The standard.* Source of truth for the manifest & lockfile formats. |
 | **Ports** (`src/ports/`) | `EnvironmentProvider`, `McpRegistry` (+ its typed failure classes) | — (interfaces only) | The seams the orchestrator depends on. |
 | **Adapters** (`src/adapters/`) | — | `MiseEnvironmentProvider`, `OfficialMcpRegistry`, `FileMcpRegistry` | The only code that knows mise / a concrete registry exists. |
-| **Orchestrator** (`src/orchestrator/`) | `DependencyMaterializer` | `Materializer`, `resolveMcpServer()`, `deriveRuntimeRequirements()`, `deriveLaunch()`, `deriveProcessLaunch()` | Composes the layers into the phased pipeline; emits the lockfile. |
+| **Orchestrator** (`src/orchestrator/`) | `DependencyMaterializer` | `Materializer`, `resolveMcpServer()`, `deriveRuntimeRequirements()`, `deriveLaunch()`, `deriveProcessLaunch()`, `writeLockfile()` | Composes the layers into the phased pipeline; emits the lockfile. |
 
 ## Dependency rules
 
@@ -251,17 +252,21 @@ flowchart TD
     H --> I["7 · effects layer writes ribosome.lock.json"]
 ```
 
-Steps 2 through 6 are all real now. Step 2 (`resolveMcpServer()`) shipped with
-the MCP Registry Adapter milestone. Steps 3–6 — dedup, pooling, environment
+All seven steps are real now. Step 2 (`resolveMcpServer()`) shipped with the
+MCP Registry Adapter milestone. Steps 3–6 — dedup, pooling, environment
 views, and lockfile assembly — are `Materializer.materialize()`
 ([#23](https://github.com/medullaflow/ribosome/issues/23), see
 [D25](#design-decisions)), which is also the first caller of `deriveLaunch()`
 ([#38](https://github.com/medullaflow/ribosome/issues/38), see
 [D21](#design-decisions)) for the `server-json` branch, and of a sibling
-`deriveProcessLaunch()` for the `process` branch (see D25). Step 7 (the
-effects layer that writes `ribosome.lock.json` to disk) is
-[#25](https://github.com/medullaflow/ribosome/issues/25)'s remaining open work
-— `materialize()` returns the lockfile as a value, deliberately not writing it.
+`deriveProcessLaunch()` for the `process` branch (see D25). Step 7 —
+`writeLockfile()` in `orchestrator/lockfile-writer.ts`
+([#25](https://github.com/medullaflow/ribosome/issues/25)) — is the one place
+in the whole pipeline that touches the filesystem: `materialize()` returns
+the lockfile as a value and never writes it itself, so the resolution path
+stays testable with zero filesystem access (`test/materializer.test.js`),
+and `writeLockfile()` is tested separately, against a real temp directory
+(`test/lockfile-writer.test.js`).
 
 Resolution failures are **aggregated**: either everything resolves, or
 `ResolutionError` lists every failure at once, so a caller reports them
@@ -341,6 +346,7 @@ determinism from the first resolve.
 | D24 | Prove multi-source dispatch + auth end-to-end using a local throwaway HTTP server as the "independent authenticated registry" leg, not a real third-party subregistry (PulseMCP) | [#40](https://github.com/medullaflow/ribosome/issues/40) originally targeted PulseMCP specifically, since it was the concrete real-world evidence D22's `auth` design was grounded in. But requiring an actual PulseMCP account/API key to land this test would make the milestone depend on a third party's signup flow for something the test doesn't actually need proof of: what matters architecturally is that `resolveMcpServer()` dispatches correctly across two differently-configured `registries.sources` entries *of the same adapter type* in one run, with the auth path (already unit-tested in isolation for [#39](https://github.com/medullaflow/ribosome/issues/39)) exercised as part of that same integrated flow — not that PulseMCP specifically is reachable. A local `node:http` server requiring an `Authorization` header, resolved alongside a real call to the live official registry through the same shared `OfficialMcpRegistry` instance, proves exactly that, with no external dependency. Revisiting against a real external subregistry stays a valid, separate follow-up if a concrete need for that specific proof arises later — this isn't a rejection of doing it for real, just a rejection of blocking this milestone on a signup flow for a proof the local stand-in already covers. |
 | D25 | `Materializer.materialize()`: `process` entries reuse the *project's own* pool view (plus their own literal `env` overrides) rather than deriving any requirements of their own; `activationHook` is stripped when assembling `Environment` values for the lockfile | A `process` entry structurally carries no `packages` to derive a runtime family from (it is a raw `{command, args, env}` launch, per `ProcessServer`'s own doc comment, "not runtime-resolved by ribosome") — so there is nothing for step 3's registry-derived requirement to hang off of. But the schema comment also says it "runs inside the project runtime pool's environment," so its `ResolvedMcpServer.environment`/`uses` are the project's own composed view, not an empty one — a `process` entry gets whatever the project's declared `runtimes` provisioned, plus its own literal `env` layered on top, never a fresh derivation. Separately: `EnvironmentDelta` extends the lockfile's `Environment` with an optional `activationHook` that is deliberately absent from the lockfile schema (see "The activation-hook boundary" below) — `Materializer` explicitly copies only `pathPrepend`/`envVars` out of every `composeView()` result before it reaches `RibosomeLockfile`, rather than relying on structural assignability to silently pass the extra field through unnoticed. Failure handling: `materialize()` runs descriptor resolution (step 2, `Promise.allSettled` over every manifest entry) and, regardless of whether any of those failed, still attempts runtime provisioning (step 4) before deciding whether to throw — so a registry failure and an environment-provisioning failure discovered in the same run are reported together in one `ResolutionError`, not in two separate fix-one-rerun passes. This is a deliberate partial step toward [#24](https://github.com/medullaflow/ribosome/issues/24)'s full aggregate-all-failures model (e.g. it does not yet decompose a single aggregated `EnvironmentProvider.materialize()` rejection into one `ResolutionFailure` per failed tool — the port's contract only gives one combined message today), not a claim that #24 is already done. |
 | D26 | `resolveMcpServer()`'s `inline` branch validates `entry.server` with the non-throwing `checkMcpServerJson()` and folds a failure into the same aggregated-failure path as every other resolution error, rather than trusting the manifest's own TypeScript typing | [#24](https://github.com/medullaflow/ribosome/issues/24)'s stated scope is aggregating failures at "the descriptor-resolution level (registry lookups, inline validation)" — registry-lookup aggregation fell out of [#23](https://github.com/medullaflow/ribosome/issues/23)'s `Promise.allSettled`-based pipeline for free, but inline validation didn't exist at all: the `inline` branch just unwrapped `entry.server` and trusted it. That trust only holds once something has run the manifest through `validateManifest()`/`checkManifest()` (pipeline step 1) — and nothing in this repo does that yet (no CLI entry point exists, see the open **Distribution** milestone), so a hand-built or agent-generated manifest with a malformed inline `server.json` would previously sail through resolution and fail confusingly deep inside `runtime-mapping.ts`/`launch-mapping.ts` instead. `checkMcpServerJson()` is the same non-throwing check `OfficialMcpRegistry`/`FileMcpRegistry` already run on registry responses (see [D23](#design-decisions)) — reusing it here means one validation code path for "does this look like a server.json," not a second one invented for the inline case. The failure surfaces as a plain thrown `Error` (not a new port-level error class): `resolveMcpServer()`'s own pre-existing "no registry declared"/"no adapter found" checks already throw plain `Error`s caught by `Materializer`'s `Promise.allSettled` and turned into a `kind: "mcpServer"` `ResolutionFailure` — this is that same orchestration-level failure category, not the `McpRegistry` port's own typed-failure contract (`InvalidServerDescriptorError` requires a `RegistryQuery`, which an inline entry never has). |
+| D27 | `writeLockfile()` lives in `orchestrator/lockfile-writer.ts`, not behind a new port/adapter pair | The lockfile has exactly one format and one target (`<cwd>/ribosome.lock.json`, the standard's own declarative JSON shape) — there is no second backend to swap in the way `EnvironmentProvider` genuinely varies (mise vs. nix vs. asdf) or `McpRegistry` genuinely varies (protocol per source). Introducing a port for a single, fixed implementation would be an abstraction with no second consumer, which the project's own stated style avoids. It still satisfies [#25](https://github.com/medullaflow/ribosome/issues/25)'s actual requirement — the resolution path testable with zero filesystem access — because `Materializer.materialize()` already returned the lockfile as a plain value before this issue (see [D25](#design-decisions)); `writeLockfile()` is the thin, separately-testable function that was still missing, tested against a real temp directory (`test/lockfile-writer.test.js`), mirroring `file-registry.test.js`'s own "no mocking `node:fs`" precedent. |
 
 ## Status
 
@@ -388,11 +394,16 @@ determinism from the first resolve.
   entry it came from ([#24](https://github.com/medullaflow/ribosome/issues/24),
   see [D26](#design-decisions)) — see `test/materializer.test.js` and
   `test/resolve-mcp-server.test.js`.
-- **Skeleton (open), here:** the remaining Orchestrator Pipeline work —
-  extracting the lockfile-writing effect into its own thin layer
-  ([#25](https://github.com/medullaflow/ribosome/issues/25)), and the
-  cross-milestone convergence check against a real registry + real
-  environment provider together
+- **Real, here:** `writeLockfile()`, the thin effects layer that persists a
+  resolved lockfile to `<cwd>/ribosome.lock.json`
+  ([#25](https://github.com/medullaflow/ribosome/issues/25), see
+  [D27](#design-decisions)) — tested against a real temp directory, see
+  `test/lockfile-writer.test.js`; `Materializer.materialize()` itself
+  remains exercised with zero filesystem access, see
+  `test/materializer.test.js`. **Orchestrator Pipeline** milestone now
+  down to its cross-milestone convergence check.
+- **Skeleton (open), here:** the convergence check against a real registry +
+  real environment provider together, no test doubles anywhere in the path
   ([#26](https://github.com/medullaflow/ribosome/issues/26)).
 - The schema repo's own status (schemas, validation, conformance corpus —
   all real and verified there) is that repo's own concern; see
