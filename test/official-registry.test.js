@@ -56,7 +56,15 @@ function hasNetworkAccess() {
 }
 
 const skip = !hasNetworkAccess();
-const testOpts = { skip: skip ? "registry.modelcontextprotocol.io unreachable" : false };
+// timeout comfortably above the adapter's own 10s resolve timeout (and above
+// the ~5s default node:test timeout), since bun test --parallel now runs
+// every test file concurrently -- these real HTTP calls can queue behind
+// each other under that concurrent load, not just behind the adapter's own
+// single-request timeout.
+const testOpts = {
+  skip: skip ? "registry.modelcontextprotocol.io unreachable" : false,
+  timeout: 20000,
+};
 
 test("resolve() fetches a real, known server from the live registry", testOpts, async () => {
   const registry = new OfficialMcpRegistry();
