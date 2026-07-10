@@ -15,7 +15,7 @@
   "scripts": {
     "prepare": "bun scripts/setup-git-hooks.js",
     "build": "tsc",
-    "test": "bun run build && bun test",
+    "test": "bun run build && bun test --parallel",
     "compile": "bun build --compile src/index.ts --outfile dist/ribosome-lib-smoke",
     "lint": "biome check",
     "lint:fix": "biome check --write",
