@@ -62,10 +62,14 @@ boundary, not something this diagram explains the inside of.
 ```mermaid
 flowchart TD
     IDX["index.ts<br/>default wiring"]
-    ORCH["orchestrator<br/>Materializer"]
+    subgraph ORCH["orchestrator"]
+      MAT["Materializer<br/>(phased pipeline, stub)"]
+      RESOLVE["resolveMcpServer()<br/>source normalization"]
+      RTMAP["runtime-mapping.ts<br/>server.json → RuntimeRequirement[]"]
+    end
     subgraph PORTS["ports · abstractions"]
       EP["EnvironmentProvider"]
-      MR["McpRegistry"]
+      MR["McpRegistry<br/>+ typed failures"]
     end
     subgraph ADAPT["adapters · concretions"]
       MISEA["MiseEnvironmentProvider"]
@@ -75,9 +79,9 @@ flowchart TD
     MISECLI[("mise CLI")]
     REGAPI[("MCP registries")]
 
-    IDX -->|injects| ORCH
-    ORCH --> EP
-    ORCH --> MR
+    IDX -->|injects| MAT
+    MAT --> EP
+    RESOLVE --> MR
     MISEA -. implements .-> EP
     REGA -. implements .-> MR
     MISEA -->|subprocess| MISECLI
@@ -89,6 +93,13 @@ flowchart TD
     classDef ext fill:#eee,stroke:#999,color:#333;
     class SCHEMA,MISECLI,REGAPI ext;
 ```
+
+`runtime-mapping.ts` and `resolve-mcp-server.ts` live in `orchestrator/`, not
+`adapters/`, despite being about the MCP registry domain: both are pure logic
+over the standard's own types (`McpServerJson`), with zero knowledge of a
+concrete registry or tool, so the orchestrator may depend on them directly
+without violating [dependency rule 1](#dependency-rules) (see
+[D20](#design-decisions)).
 
 Every arrow inside ribosome points **inward toward the orchestrator core**;
 the concrete tools (mise, the registries) sit at the very edge, reachable
@@ -103,7 +114,7 @@ the boundary: **[ribosome-schema](https://github.com/medullaflow/ribosome-schema
 (Apache-2.0) owns the normative JSON Schemas, the conformance corpus, and the
 TypeScript binding (`@medullaflow/ribosome-schema`); this repo (MPL-2.0)
 owns everything downstream of that — ports, adapters, orchestrator — and
-depends on it as an ordinary published npm dependency (`^0.1.3`). It
+depends on it as an ordinary published npm dependency (`^0.1.7`). It
 carries no schema and no conformance fixtures of its own. For anything about
 *how the standard itself* is versioned, vendored, or governed, that repo's
 own docs are the source, not this file.
@@ -117,9 +128,9 @@ ribosome is a [ports & adapters](https://alistair.cockburn.us/hexagonal-architec
 | Layer | Abstraction | Implementation | Responsibility |
 |-------|-------------|----------------|----------------|
 | **Spec** ([ribosome-schema](https://github.com/medullaflow/ribosome-schema), external) | Normative JSON Schemas + validation contract | validator (ajv), generated types, version pins | *The standard.* Source of truth for the manifest & lockfile formats. |
-| **Ports** (`src/ports/`) | `EnvironmentProvider`, `McpRegistry` | — (interfaces only) | The seams the orchestrator depends on. |
+| **Ports** (`src/ports/`) | `EnvironmentProvider`, `McpRegistry` (+ its typed failure classes) | — (interfaces only) | The seams the orchestrator depends on. |
 | **Adapters** (`src/adapters/`) | — | `MiseEnvironmentProvider`, `OfficialMcpRegistry` | The only code that knows mise / a concrete registry exists. |
-| **Orchestrator** (`src/orchestrator/`) | `DependencyMaterializer` | `Materializer` | Composes the layers into the phased pipeline; emits the lockfile. |
+| **Orchestrator** (`src/orchestrator/`) | `DependencyMaterializer` | `Materializer` (stub), `resolveMcpServer()`, `deriveRuntimeRequirements()` | Composes the layers into the phased pipeline; emits the lockfile. |
 
 ## Dependency rules
 
@@ -188,8 +199,12 @@ interface EnvironmentProvider {
 }
 interface McpRegistry {
   readonly type: string;                                  // matched to RegistrySource.type
+  // Rejects with one of three typed failures below, never a generic Error —
+  // part of the port's contract, so any future adapter (GitHub, Microsoft, ...)
+  // and the orchestrator agree on the same failure shapes.
   resolve(query: RegistryQuery): Promise<McpServerJson>;
 }
+// RegistryUnreachableError | ServerNotFoundError | InvalidServerDescriptorError
 ```
 
 ## The pool + views model
@@ -219,8 +234,8 @@ provider default when unpinned.
 
 ```mermaid
 flowchart TD
-    A["1 · validate ribosome.json (spec)"] --> B["2 · resolve each MCP server<br/>registry.resolve() or inline → server.json descriptor"]
-    B --> C["derive runtimeRequirements<br/>from registryType / runtimeHint"]
+    A["1 · validate ribosome.json (spec)"] --> B["2 · resolveMcpServer() per entry<br/>registry | inline → server-json · process → passthrough"]
+    B --> C["derive runtimeRequirements<br/>from registryType / runtimeHint<br/>(server-json branch only)"]
     A --> D["project runtimes<br/>(version policy)"]
     C --> E["3 · merge + dedup → pool requirements"]
     D --> E
@@ -229,6 +244,13 @@ flowchart TD
     G --> H["6 · assemble lockfile<br/>aggregate ALL failures, not the first"]
     H --> I["7 · effects layer writes ribosome.lock.json"]
 ```
+
+Step 2 is real (`resolveMcpServer()`, MCP Registry Adapter milestone, closed);
+steps 3 onward are still the Orchestrator Pipeline milestone's open work —
+including deriving an actual *launch* command from the server-json branch's
+`packages`, which has no owner yet either (tracked as
+[#38](https://github.com/medullaflow/ribosome/issues/38), not assumed to fall
+out of step 2 or 3 for free).
 
 Resolution failures are **aggregated**: either everything resolves, or
 `ResolutionError` lists every failure at once, so a caller reports them together.
@@ -294,17 +316,24 @@ determinism from the first resolve.
 | D16 | Vendor a pinned mise binary into every packaged release artifact, in a package-private directory (never a shared system `bin`); `MiseEnvironmentProvider` prefers it over `PATH`, with an explicit override | Shipping a "zero-setup" installer that immediately fails with `ENOENT` the first time it shells out to `mise` (`mise-environment-provider.ts`'s `execFileAsync("mise", ...)` resolves purely from `PATH` today) would defeat the entire point of D15 — the resolver's core job is provisioning runtimes, so it can't itself demand a pre-provisioned one. Verified mise is a viable vendoring target the same way [D10](#design-decisions) already vendors the MCP schema: MIT-licensed, and its GitHub releases ship static standalone binaries under exactly the five target/arch names D15 already builds for (`mise-<version>-linux-x64`, `-linux-arm64`, `-macos-x64`, `-macos-arm64`, `-windows-x64.exe`), with a published `SHASUMS256.txt` to verify against during the fetch. **Placement is deliberately package-private, not a shared system path**: `.deb`/`.rpm` must not own a file under `/usr/bin` that a user's own mise install (via the official installer, brew, or cargo) might already occupy — that's a real package-manager conflict, not a style choice — so the vendored binary goes under e.g. `/usr/lib/ribosome/mise`, and Windows/zip get it as a sibling file in ribosome's own install directory, never added to `PATH` itself. `MiseEnvironmentProvider` resolves an executable path in order: bundled path first, `PATH` fallback second (so `npm install`-as-a-library consumers, which ship no bundled binary, keep working exactly as today, unaffected), with an explicit override — an env var (e.g. `RIBOSOME_MISE_BIN`) that takes priority over both — so a security-patched system mise, or a corporate-mandated pinned version, is never silently unreachable. Deliberately **prefer the bundled copy over an unspecified system one** rather than the reverse: this repo's whole pitch is reproducibility (see "Reproducibility is a property of the lockfile" above), and "which `mise` resolved your runtimes" silently depending on what happens to be on a given machine's `PATH` is exactly the kind of nondeterminism that pitch argues against — but reproducibility-by-default must not mean unreachable, hence the override. The bundled binary is expected to install into mise's own shared global store (`~/.local/share/mise` or platform equivalent — a mise-config concept, not tied to which binary invoked it); this is **not assumed**, it's an acceptance criterion the D17 verification tier checks for real, since mise's own directory-layout defaults could in principle differ across versions. Bumping the pinned mise version is a deliberate, reviewed act (its own changelog entry), not automatic "latest" — and, same discipline as D10's vendor-drift check, needs its own drift-detection process (a scheduled check comparing the pinned version against mise's latest release, opening an issue when stale — reusing `ribosome-schema`'s `vendor-drift.yml` shape) so the pin doesn't just silently rot after v1.0.0. License attribution (MIT copyright + license text) added to `NOTICE`, same handling as the existing vendored MCP schema. |
 | D17 | Two-tier release CI: one cross-compile job (D15), then a per-OS **verification** matrix that actually executes each already-built packaged artifact (never a rebuild) before it's attached to the Release | A cross-compiled binary that merely didn't error during compilation is not evidence it runs — `windows-x64`, `darwin-x64`, `darwin-arm64`, and (compiled but not natively executable on an x64 runner) `linux-arm64` artifacts from D15's single `ubuntu-latest` job cannot be *executed* on that same runner to prove they work, only inspected as file types (as done manually to validate D15 itself). Keeps D15's build tier as-is (cheap, single job, no matrix) and adds a second, separate matrix job — `windows-latest`, `macos-latest` (Apple Silicon, native for `darwin-arm64`; also runs `darwin-x64` via Rosetta 2, which ships preinstalled on that image, so no separate Intel runner leg is needed), and a native or QEMU-emulated `linux-arm64` runner — that downloads the exact artifact already produced for the Release (not a rebuild, so the bytes that get tested are the same bytes that get checksummed and attested — the whole point of attesting build provenance) and runs an OS-native smoke test: install via the actual packaging format (NSIS silent install, `dpkg -i`/`rpm -i` in a clean container, unzip for macOS), then `ribosome --version`, then a real `ribosome resolve` against a minimal fixture `ribosome.json` — which, via D16, also proves the bundled-mise resolution path works for real on that OS, not mocked. This verification tier **gates** the upload step: an artifact that fails its native smoke test does not get attached to the GitHub Release, even if it compiled cleanly. Compilation and verification stay separate concerns/jobs on purpose — collapsing them back into one per-OS matrix job would reintroduce exactly the N-runner cost D15 removed from compilation. Cost is bounded the same way D15's is: this whole tier only runs on a published GitHub Release, not per-commit or per-PR, so the higher per-minute cost of macOS/Windows runners is paid rarely, by design. |
 | D18 | Relicense this repo from AGPL-3.0-or-later to MPL-2.0 | ribosome is meant to be consumed both as a CLI/binary *and* as a library embedded in other orchestrators' products, including closed-source commercial ones — but strong copyleft is a poor fit for the second case: under the classic GPL-family "derivative work" theory, a product that embeds AGPL code can be read as obligated to release its entire combined source, which actively works against the stated goal of broad adoption of the resolver itself (see "conform on the config axis, compete on the runtime axis" above). The concern AGPL actually addresses — a cloud provider taking a modified copy and running it as a hosted service without ever distributing or contributing back — was not the maintainer's actual worry; the real one was a competitor forking the *code* and shipping it inside a closed commercial product with no changes ever coming back. That is precisely what file-level copyleft (MPL-2.0) targets: modify a file that's part of ribosome and distribute it, even embedded in an otherwise-proprietary product, and you must share your changes to that file — the rest of the combined work is unaffected. LGPL-3.0 (library-level, not file-level, weak copyleft) was considered and rejected as a closer-but-less-modern fit: it was designed around C-style dynamic linking and is less commonly used and less clearly worded for JS/TS bundling than MPL-2.0, which Mozilla rewrote in 2012 specifically to clarify these combination scenarios. Straight permissive (MIT/Apache-2.0) was also considered and rejected: it would give up the one protection the maintainer *did* want (modifications to ribosome's own code coming back), for no adoption benefit MPL-2.0 doesn't already provide equally well. No license of any kind can prevent an independent reimplementation that never touches ribosome's actual code — that risk is out of scope for a license choice and is addressed instead by trademark on the project name and by being the reference implementation of the standard, not by copyright terms. Practical timing: the sole author holds 100% of the copyright and nothing had yet been published to npm or as a release artifact under AGPL, making this the cheapest point at which this change could ever be made — a fully justified reason to burn one cycle here rather than resolve this concern later, whether that "later" is more contributors or the first published release. |
+| D19 | `OfficialMcpRegistry` hand-types the registry's HTTP response envelope rather than vendoring its OpenAPI spec + codegen | The registry publishes a full OpenAPI spec (`registry.modelcontextprotocol.io/openapi.yaml`), and no official client SDK exists for consuming it — only an SDK for *speaking* the MCP protocol itself (unrelated). But the only endpoint this read-only adapter needs (`GET /v0.1/servers/{name}/versions/{version}`) has a 3-field response envelope (`server`, `_meta`), and the interesting part (`server`) is already the vendored, runtime-validated `McpServerJson` type from `ribosome-schema`. Standing up a vendor-and-codegen pipeline (`openapi-typescript` or similar) for a 3-field envelope — when most of that spec is auth/publish/admin endpoints this adapter never touches — would be disproportionate. Mirrors an existing precedent in the sibling repo: `McpServerJson` itself is hand-typed there, not generated, for the same reason (large external schema, only a handful of fields actually read). Revisit if this adapter ever needs a wider slice of the registry API (search/list/pagination) — that's a materially different cost/benefit than one endpoint. |
+| D20 | Registry/inline/process sources normalize to a discriminated `ResolvedMcpServerRef`, not a single merged shape; the pure mapping logic that derives runtime requirements from a resolved descriptor lives in `orchestrator/`, not `adapters/` | Process-sourced servers structurally have no `server.json` — no `packages`, no registry-derived runtime info, "not runtime-resolved by ribosome" per the manifest schema's own doc comment — so forcing all three sources into one merged type would mean inventing fields for process that don't exist. A discriminated union (`{kind: "server-json", server}` for registry/inline — a registry lookup resolves to exactly what an inline server already carries — vs. `{kind: "process", process}` for pass-through) is honest about that structural difference instead of papering over it. Separately: `runtime-mapping.ts` (deriving `RuntimeRequirement[]` from a resolved `McpServerJson`) was relocated from `adapters/mcp-registry/` to `orchestrator/` before the normalization dispatcher (which needs it) was written — it is pure logic over the standard's own types, with zero knowledge of a concrete registry, but its old location under `adapters/` would have forced the orchestrator to import from `adapters/` directly, violating [dependency rule 1](#dependency-rules) (materializer.ts's own stated contract: "depends only on ports... never a concrete adapter"). Deliberately stops at the resolved descriptor: deriving an actual *launch* command (an executable argv or URL) from the server-json branch's `packages` is left to the Orchestrator Pipeline milestone — that logic (correct argument construction per package manager, choosing among multiple packages, precedence between local packages and remote endpoints) didn't have an owner under any existing issue, so it was filed as [#38](https://github.com/medullaflow/ribosome/issues/38) rather than invented as a side effect of this normalization step. |
 
 ## Status
 
 - **Real, here:** the ports; the wiring that consumes `@medullaflow/ribosome-schema`
-  as a published npm dependency, `^0.1.3` (verified by `test/schema-dependency.test.js`);
-  and `MiseEnvironmentProvider` — `materialize()`/`composeView()`, integration-tested
+  as a published npm dependency, `^0.1.7` (verified by `test/schema-dependency.test.js`);
+  `MiseEnvironmentProvider` — `materialize()`/`composeView()`, integration-tested
   against a real mise install, see `test/mise-environment-provider.test.js`
-  (**Environment Provider** milestone, closed).
-- **Skeleton (stubs that throw `not implemented`), here:** the registry
-  adapter and the orchestrator pipeline (**MCP Registry Adapter** and
-  **Orchestrator Pipeline** milestones, open).
+  (**Environment Provider** milestone, closed); and `OfficialMcpRegistry.resolve()`
+  plus `resolveMcpServer()`'s three-source normalization — both integration-tested
+  against the real live registry, see `test/official-registry.test.js` and
+  `test/resolve-mcp-server.test.js` (**MCP Registry Adapter** milestone, closed).
+- **Skeleton (stubs that throw `not implemented`), here:** the phased
+  pipeline itself — dedup, pooling, environment views, lockfile assembly, and
+  deriving a launch command from a resolved server-json (**Orchestrator
+  Pipeline** milestone, open; see also
+  [#38](https://github.com/medullaflow/ribosome/issues/38)).
 - The schema repo's own status (schemas, validation, conformance corpus —
   all real and verified there) is that repo's own concern; see
   [its README](https://github.com/medullaflow/ribosome-schema#status).
