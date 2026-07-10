@@ -31,11 +31,20 @@ function hasNetworkAccess() {
 }
 
 const skip = !hasNetworkAccess();
-const testOpts = { skip: skip ? "registry.modelcontextprotocol.io unreachable" : false };
+// timeout comfortably above fetchServer()'s own --max-time 10 curl call --
+// bun test --parallel now runs every test file concurrently, so these real
+// HTTP calls can queue behind each other under that concurrent load, not
+// just behind curl's own single-request timeout.
+const testOpts = {
+  skip: skip ? "registry.modelcontextprotocol.io unreachable" : false,
+  timeout: 20000,
+};
 
 function fetchServer(name, version) {
   const url = `${OFFICIAL_URL}/v0.1/servers/${encodeURIComponent(name)}/versions/${version}`;
-  const raw = execFileSync("curl", ["-fsS", "--max-time", "10", url]);
+  // --max-time above the ~5s this normally takes, with headroom for the
+  // concurrent load bun test --parallel now puts on the live registry.
+  const raw = execFileSync("curl", ["-fsS", "--max-time", "15", url]);
   return JSON.parse(raw.toString()).server;
 }
 
