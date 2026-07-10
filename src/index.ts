@@ -46,7 +46,7 @@ export type {
 } from "./orchestrator/materializer";
 export { Materializer, ResolutionError } from "./orchestrator/materializer";
 export { deriveRuntimeRequirements, toolForPackage } from "./orchestrator/runtime-mapping";
-export { deriveLaunch } from "./orchestrator/launch-mapping";
+export { deriveLaunch, deriveProcessLaunch } from "./orchestrator/launch-mapping";
 export type {
   RegistryResolutionContext,
   ResolvedMcpServerRef,
