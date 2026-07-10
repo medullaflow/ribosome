@@ -131,6 +131,7 @@ get an **isolated environment view** over it. An MCP server's runtime is
 **derived from the registry** (`server.json`), not restated by you.
 
 **→ Full design, diagrams, and decisions: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).**
+**→ The versioned library integration contract: [docs/API.md](docs/API.md).**
 
 ## Project layout
 
