@@ -28,12 +28,10 @@ ribosome fills exactly that gap. It **conforms on the config axis** (its
 
 - **[ribosome-schema](https://github.com/medullaflow/ribosome-schema)** — the
   *standard*: normative JSON Schemas for `ribosome.json`/`ribosome.lock.json`,
-  a conformance corpus, and a TypeScript binding. **Apache-2.0** — implement it
-  in any product, open or closed, with no obligation.
-- **ribosome (this repo)** — the *reference resolver/orchestrator*: mise +
-  MCP registry adapters and the materialization pipeline. **MPL-2.0** —
-  modify a file, share that file's changes; embed it in your own product,
-  proprietary or not, with no obligation on the rest of that product.
+  a conformance corpus, and a TypeScript binding. **Apache-2.0**.
+- **ribosome (this repo)** — the *reference resolver/orchestrator*: pluggable
+  runtime + MCP registry provisioning, and the materialization pipeline.
+  **MPL-2.0** — see [Licensing](#licensing).
 
 ribosome depends on `@medullaflow/ribosome-schema` as an ordinary package, the
 same way it depends on any other library. This repo carries **no schema, no
@@ -200,16 +198,29 @@ Ribosomes are the cell's dependency materializers: they take a declaration
 
 ## Licensing
 
-MPL-2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE). File-level copyleft:
-modify a file, share that file's changes; embed ribosome in your own
-product, proprietary or not, with no obligation on the rest of it. This
-repo is the reference *implementation*; the *standard* it implements
+**MPL-2.0** — see [LICENSE](LICENSE) and [NOTICE](NOTICE) for what that means
+and why, and [CONTRIBUTING.md](CONTRIBUTING.md#why-mpl-20) for the full
+reasoning behind the choice. This repo is the reference *implementation*;
+the *standard* it implements
 ([ribosome-schema](https://github.com/medullaflow/ribosome-schema)) is a
-separate Apache-2.0 repo with no obligation at all. See
-[CONTRIBUTING.md](CONTRIBUTING.md#why-mpl-20) for the full reasoning.
+separate, Apache-2.0 repo.
 
 ribosome is a component of the [medullaflow](https://github.com/medullaflow/medullaflow)
 project, designed to be reusable standalone.
+
+## Built on
+
+ribosome provisions runtimes and MCP servers by orchestrating existing,
+focused tools rather than reimplementing them — see
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit together.
+The reference adapters currently build on:
+
+- **[mise](https://github.com/jdx/mise)** — runtime version management
+- **[MCP Registry](https://github.com/modelcontextprotocol/registry)** — the
+  official Model Context Protocol server registry
+
+Full third-party attribution, if any is ever bundled rather than just
+depended on: [NOTICE](NOTICE).
 
 ## Attribution
 

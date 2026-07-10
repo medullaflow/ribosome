@@ -5,7 +5,7 @@
     "": {
       "name": "@medullaflow/ribosome",
       "dependencies": {
-        "@medullaflow/ribosome-schema": "^0.1.5",
+        "@medullaflow/ribosome-schema": "^0.1.6",
       },
       "devDependencies": {
         "@biomejs/biome": "2.5.3",
@@ -33,7 +33,7 @@
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.5.3", "", { "os": "win32", "cpu": "x64" }, "sha512-ExSaJWi4/u6+GXCszlSKpWSjKNbDseAYqqkCznsCsZ/4uidZ/BEqsCc5/3ctlq6dfIubdIIRSVLC/PG9xPl70Q=="],
 
-    "@medullaflow/ribosome-schema": ["@medullaflow/ribosome-schema@0.1.5", "", { "dependencies": { "ajv": "^8.17.1", "ajv-formats": "^3.0.1" } }, "sha512-zycxpIxGRC/vVbF0GZmzohBb2+7YGT8q8tYIz6VTCwUWzDtJcKCNldi1D4j0bN57yVLfsOnqL+YL2quoY1vW9w=="],
+    "@medullaflow/ribosome-schema": ["@medullaflow/ribosome-schema@0.1.6", "", { "dependencies": { "ajv": "^8.17.1", "ajv-formats": "^3.0.1" } }, "sha512-QNy35KE3O5byGN7FyDF7eRjMMccSUSZKMvax++w2gaW4gyl59FzOx/psy5m1bsQeEsBGONEqjM/j3ntEAL2CMw=="],
 
     "@types/node": ["@types/node@24.13.3", "", { "dependencies": { "undici-types": "~7.18.0" } }, "sha512-Dh8vAsV36ig5wa9OX4pXvMc9D3Veibfw2wix0CUwYODLD8nkj9UsLjASr49nPg+2eKzxhBV+v7L8pXvT4e639Q=="],
 

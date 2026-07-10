@@ -39,25 +39,28 @@ Any copy or modified version you distribute must retain:
                     THIRD-PARTY COMPONENTS
 ================================================================================
 
---------------------------------------------------------------------------------
-@medullaflow/ribosome-schema
---------------------------------------------------------------------------------
-Version: ^0.1.3
-License: Apache-2.0
-Copyright: ribosome-schema contributors
-Location: package.json dependency (published on npm)
-Source: https://github.com/medullaflow/ribosome-schema
+This section is empty: nothing is currently vendored/bundled into this repo
+or a distributed artifact. `@medullaflow/ribosome-schema` is not listed here
+despite being a different license (Apache-2.0) — it's a sibling first-party
+project (see this file's opening section above and its own NOTICE), not
+third-party content, and an ordinary published dependency besides.
 
-Runtime/dev dependencies (typescript, @types/node) remain under their
-respective licenses; see package.json and node_modules/<pkg>/LICENSE.
+Ordinary runtime/dev dependencies, resolved via the package manager (never
+vendored/copied into this repo), remain under their own licenses — each
+ships its own LICENSE inside its own package; see package.json and
+node_modules/<pkg>/LICENSE. This entry is deliberately generic: it should
+never need an update just because an ordinary dependency was added, removed,
+or bumped.
 
 --------------------------------------------------------------------------------
-[TEMPLATE — add new third-party components here]
+[TEMPLATE — add an entry here ONLY for genuinely vendored/bundled content,
+e.g. a future bundled mise binary (see docs/ARCHITECTURE.md D16) — never for
+an ordinary package-manager dependency, see CONTRIBUTING.md]
 --------------------------------------------------------------------------------
 Version: X.Y.Z
 License: MIT/Apache/GPL/etc.
 Copyright: YEAR OWNER
-Location: vendor/name OR package.json
+Location: vendor/name OR the packaged artifact it ships in
 
 ================================================================================
 Disclaimer: Third-party components remain under their respective licenses.

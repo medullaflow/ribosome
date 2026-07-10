@@ -22,8 +22,11 @@ By contributing, you agree that your contribution is licensed under the
 Mozilla Public License, version 2.0 (MPL-2.0) — the same license as the
 rest of the project. You retain copyright of your own contributions.
 
-If your contribution includes code from a third-party library, note it
-in `NOTICE` along with that library's license.
+**If your change vendors/copies third-party content into this repo** (a future
+`vendor/` directory, a bundled binary, or anything similar — not an ordinary
+package-manager dependency, which needs nothing) — add an entry to `NOTICE`'s
+THIRD-PARTY COMPONENTS section in the same PR. This is the one case that
+needs a human to remember it; nothing checks for it automatically.
 
 ## Sign off your commits (DCO)
 
