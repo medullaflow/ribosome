@@ -52,6 +52,7 @@ export type {
   ResolvedMcpServerRef,
 } from "./orchestrator/resolve-mcp-server";
 export { resolveMcpServer } from "./orchestrator/resolve-mcp-server";
+export { LOCKFILE_FILENAME, writeLockfile } from "./orchestrator/lockfile-writer";
 
 // ── Adapters (default wiring) ───────────────────────────────────────────────
 export { MiseEnvironmentProvider } from "./adapters/mise/mise-environment-provider";
