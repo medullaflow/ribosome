@@ -55,4 +55,5 @@ export { resolveMcpServer } from "./orchestrator/resolve-mcp-server";
 
 // ── Adapters (default wiring) ───────────────────────────────────────────────
 export { MiseEnvironmentProvider } from "./adapters/mise/mise-environment-provider";
+export { FileMcpRegistry } from "./adapters/mcp-registry/file-registry";
 export { OfficialMcpRegistry } from "./adapters/mcp-registry/official-registry";
