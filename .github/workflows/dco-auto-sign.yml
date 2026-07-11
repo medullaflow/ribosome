@@ -8,8 +8,8 @@ on:
 jobs:
   dco-sign:
     runs-on: ubuntu-latest
-    # Only run for dependabot PRs
-    if: github.actor == 'dependabot[bot]'
+    # Run for dependabot PRs or when working on dependabot branches
+    if: github.actor == 'dependabot[bot]' || contains(github.head_ref, 'dependabot/')
     permissions:
       contents: write
       pull-requests: write
