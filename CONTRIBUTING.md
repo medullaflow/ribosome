@@ -97,11 +97,12 @@ tool (an IDE, a formatter, a code generator) to produce the change.
 `@ookmash` on every PR (enforced via this repo's branch protection). This is
 where human judgment is meant to land — not on every line an agent produces,
 but as the final check that automated guardrails (lint, typecheck,
-architecture fitness, tests, DCO, secret scanning, dependency/vulnerability
-scanning) can't make: does this change actually make sense, and is *someone*
-willing to stand behind it. With a single maintainer, that maintainer cannot
-literally review their own PRs — merges bypass the review requirement via
-repo-admin privileges, a visible, audited action on every such merge (not a
+architecture fitness, tests, DCO, secret scanning, dependency and
+vulnerability scanning) can't make: does this change actually make sense, and
+is *someone* willing to stand behind it. With a single maintainer, that
+maintainer cannot literally review their own PRs — merges bypass the review
+requirement via repo-admin privileges, a visible, audited action on every
+such merge (not a
 workaround around the gate; it *is* the accountability mechanism until a
 second reviewer exists to make the review literal). The gate activates in
 its ordinary form — an actual second person's approval required — the
