@@ -5,6 +5,14 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    ignore:
+      # TypeScript 7.0 is a major rewrite (native/Go-based); the 5.9.3 -> 7.0.2
+      # bump broke scripts/architecture-rules.js's use of a removed enum
+      # member on first contact. A type-checker major version deserves
+      # deliberate, separate review, not an auto-opened PR -- see
+      # docs/ARCHITECTURE.md's design-decisions log.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

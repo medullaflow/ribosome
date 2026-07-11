@@ -59,7 +59,7 @@ function toPosix(p) {
 /** Every import/re-export module specifier in a file, with its 1-based line number. */
 function moduleSpecifiers(filePath) {
   const content = fs.readFileSync(filePath, "utf8");
-  const sf = ts.createSourceFile(filePath, content, 99, true, ts.ScriptKind.TS);
+  const sf = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const specs = [];
   for (const stmt of sf.statements) {
     const isEdge =
