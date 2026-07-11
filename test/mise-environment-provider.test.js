@@ -15,7 +15,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { execFileSync } = require("node:child_process");
 const { tmpdir } = require("node:os");
-const { mkdtempSync } = require("node:fs");
+const { mkdtempSync, readFileSync } = require("node:fs");
 const { join } = require("node:path");
 
 const { MiseEnvironmentProvider } = require("../dist/index.js");
@@ -63,6 +63,35 @@ test("materialize() installs and dedups by exact resolved version", testOpts, as
   assert.equal(nodeEntries.length, 1, "node@22 and node@22.23 should dedup to one pool entry");
   assert.match(nodeEntries[0].version, /^22\./, "resolved node version should be a 22.x patch");
 });
+
+test(
+  "materialize() registers every resolved tool with mise's own tracked-configs, so it isn't left prunable (#59)",
+  testOpts,
+  async () => {
+    const provider = new MiseEnvironmentProvider();
+    const cwd = mkdtempSync(join(tmpdir(), "ribosome-mise-test-"));
+
+    const pool = await withMiseInstallLock(() =>
+      provider.materialize([{ tool: "jq", versionSpec: "latest" }], { cwd }),
+    );
+    const jq = pool[0];
+
+    // Adapter-internal, project-local tracked config (never the project
+    // root -- see the adapter's own module comment).
+    const tracked = readFileSync(join(cwd, ".ribosome", "mise.toml"), "utf8");
+    assert.match(tracked, new RegExp(`jq = "${jq.version}"`));
+
+    // The actual acceptance criterion: a bare `mise install` (this
+    // adapter's pre-#59 behavior) left an install immediately visible to
+    // `mise ls --prunable` -- an unrelated `mise prune` elsewhere on the
+    // machine could silently delete it. It must not be listed now.
+    const prunable = execFileSync("mise", ["ls", "--prunable"], { encoding: "utf8" });
+    assert.ok(
+      !new RegExp(`^jq\\s+${jq.version}\\s*$`, "m").test(prunable),
+      `jq@${jq.version} should not be prunable after materialize() tracked it, got:\n${prunable}`,
+    );
+  },
+);
 
 test("composeView() produces a pathPrepend that resolves the right binary", testOpts, async () => {
   const provider = new MiseEnvironmentProvider();
