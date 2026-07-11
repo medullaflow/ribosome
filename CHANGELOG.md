@@ -50,6 +50,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   since the `#60` pool-dir work switched those call sites to the
   correct key-omitting construction. Fixed the assertions to match the
   now-correct behavior, not reverted.
+- **DCO checks were failing on every Dependabot PR.** `check-dco.js` required
+  the `Signed-off-by` trailer's email to exactly match the commit author's
+  email; Dependabot authors as `...@users.noreply.github.com` but signs off
+  as `dependabot[bot] <support@github.com>` — same bot, different address,
+  so the exact match always failed. Fixed by exempting Dependabot's own
+  commits by author email (not branch name); a short-lived
+  `dco-auto-sign.yml` workaround that rebased and force-pushed a sign-off
+  onto PR branches was removed instead of patched further — it collided
+  with the separate "Signed commits" ruleset (rewritten commits aren't
+  cryptographically signed) and risked re-triggering itself indefinitely.
+  See [`docs/ARCHITECTURE.md` D33](docs/ARCHITECTURE.md#design-decisions).
+  Also reverted an unrelated premature fix for TypeScript 7.0 compatibility
+  in `scripts/architecture-rules.js` — the 7.0 bump was never actually
+  merged (`typescript` stays on `^5.7.0`; `dependabot.yml` now ignores
+  major-version updates for it specifically, pending deliberate review).
 
 ### Changed
 - **Relicensed from `AGPL-3.0-or-later` to `MPL-2.0`.** ribosome is meant to
