@@ -5,6 +5,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 ## [Unreleased]
 
 ### Added
+- **Coverage floor** (`bunfig.toml`, `bun test`'s built-in `coverageThreshold`)
+  — the first half of #31. Per-file, not aggregate-only (a new 0%-covered
+  file shouldn't be able to hide behind an already-high repo-wide average):
+  80% lines/functions/statements, set just below today's lowest real file
+  rather than at today's average, so it's a regression floor rather than a
+  tax on ordinary changes. `test/**` (fixture/mock helpers, not production
+  code) is excluded from the gate. Also dropped `--parallel` from the `test`
+  script's default invocation — bun's coverage collection under `--parallel`
+  reproducibly undercounts (verified: one file's reported line coverage
+  dropped from 97.56% to 76.92% between parallel and sequential runs of the
+  *same* suite, no code change) — worth revisiting if the suite grows large
+  enough to make parallel execution a real speed necessity. The other half
+  of #31, a mutation-adequacy signal, stays open as a separate follow-up:
+  Stryker Mutator's bun-test-runner support needs a short spike to confirm
+  it actually works before committing to it. See
+  [`docs/ARCHITECTURE.md` D37](docs/ARCHITECTURE.md#design-decisions).
 - **Required code-owner review** on every PR (`require_code_owner_review`
   on the branch-protection ruleset) and an explicit **"Agent-directed
   contributions"** section in `CONTRIBUTING.md` — closes #34. Most of this

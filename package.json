@@ -16,7 +16,7 @@
     "prepare": "bun scripts/setup-git-hooks.js",
     "build": "tsc",
     "typecheck:test": "tsc --noEmit -p tsconfig.check.json",
-    "test": "bun run build && bun test --parallel",
+    "test": "bun run build && bun test",
     "compile": "bun build --compile bin/ribosome.ts --outfile dist/ribosome",
     "lint": "biome check",
     "lint:fix": "biome check --write",
