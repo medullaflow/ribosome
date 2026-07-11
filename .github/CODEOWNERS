@@ -1,6 +1,13 @@
-# Licensing-sensitive files always need @ookmash's review — see
-# CONTRIBUTING.md's licensing/attribution policy (new dependencies
-# must stay MPL-2.0-compatible).
+# Required-review gate for the whole repo — see CONTRIBUTING.md's
+# "Agent-directed contributions" section for what this is and why it
+# exists even with a single maintainer.
+* @ookmash
+
+# Called out explicitly (redundant with the catch-all above today, since
+# there's one owner) because these carry extra weight regardless of who
+# adds a second reviewer later: licensing-sensitive files always need
+# @ookmash's review — see CONTRIBUTING.md's licensing/attribution policy
+# (new dependencies must stay MPL-2.0-compatible).
 /LICENSE @ookmash
 /COPYING.md @ookmash
 /NOTICE @ookmash

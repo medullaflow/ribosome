@@ -71,6 +71,42 @@ issue when the commit *implements* or *advances* tracked work.
 you'd rather have GitHub do the association than rely on the commit trailer
 alone.
 
+## Agent-directed contributions
+
+Most of this repo's code is written by an AI agent under a human's
+direction, not typed by hand. That's expected and not a special case
+requiring different rules — but it's worth being explicit about how the
+existing rules apply, rather than leaving it implicit.
+
+**Accountability.** The DCO sign-off (above) is already, by its own text, an
+assertion by *a human* that they have the right to submit the contribution.
+Directing an agent to write, edit, or refactor code and then signing off on
+the resulting commit means taking the same accountability for it as if you'd
+typed it yourself — reviewing what it did, understanding why, and standing
+behind it. "The agent wrote it" is not a defense for a bug, a license
+violation, or a bad architectural call any more than "I copied it from
+somewhere" would be; the sign-off is *your* certification either way.
+
+**Attribution.** `AUTHORS` and commit authorship attribute to the human who
+directed the work, never to an agent or tool by name. Agents aren't legal
+authors and can't hold copyright or make the DCO's assertion — the human
+directing one is the contributor of record, same as if they'd used any other
+tool (an IDE, a formatter, a code generator) to produce the change.
+
+**The review gate.** `CODEOWNERS` requires an approving review from
+`@ookmash` on every PR (enforced via this repo's branch protection). This is
+where human judgment is meant to land — not on every line an agent produces,
+but as the final check that automated guardrails (lint, typecheck,
+architecture fitness, tests, DCO, secret scanning, dependency/vulnerability
+scanning) can't make: does this change actually make sense, and is *someone*
+willing to stand behind it. With a single maintainer, that maintainer cannot
+literally review their own PRs — merges bypass the review requirement via
+repo-admin privileges, a visible, audited action on every such merge (not a
+workaround around the gate; it *is* the accountability mechanism until a
+second reviewer exists to make the review literal). The gate activates in
+its ordinary form — an actual second person's approval required — the
+moment a second `CODEOWNERS` entry is added.
+
 ## SPDX Headers & Git Hooks
 
 Every `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.scss` and `.css` file
