@@ -59,6 +59,12 @@
 // correctness gap — the bug this closes is silent deletion of an in-use
 // tool, which this fully fixes; tightening "untrack promptly on drop" is a
 // separate, later concern if it ever matters in practice.
+//
+// Pool location (#60): `ctx.poolDir`, when set, becomes MISE_DATA_DIR for
+// every subprocess call this adapter makes — verified mise honors it for
+// install/where/bin-paths AND for the tracking `mise use` call, each fully
+// scoped to that directory (its own `mise ls --prunable` view is isolated
+// from the default global store, no cross-pollination in either direction).
 
 import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
@@ -74,8 +80,9 @@ import type {
 
 const execFileAsync = promisify(execFile);
 
-async function mise(args: string[], cwd: string): Promise<string> {
-  const { stdout } = await execFileAsync("mise", args, { cwd });
+async function mise(args: string[], cwd: string, poolDir: string | undefined): Promise<string> {
+  const env = poolDir ? { ...process.env, MISE_DATA_DIR: poolDir } : process.env;
+  const { stdout } = await execFileAsync("mise", args, { cwd, env });
   return stdout.trim();
 }
 
@@ -89,10 +96,18 @@ export class MiseEnvironmentProvider implements EnvironmentProvider {
   // Pool id ("tool@exactVersion") -> its bin directories. Populated by the
   // most recent materialize() on this instance; composeView() reads it
   // synchronously (the port forbids new installs/subprocesses there).
+  // Always freshly overwritten on every installOne() call, never read as a
+  // "skip re-querying" cache: with a configurable poolDir (#60), the SAME id
+  // could resolve to a genuinely different physical path across two
+  // materialize() calls on one instance (different projects, different
+  // pool.dir, coincidentally the same exact tool version) -- a stale-cache
+  // read would silently point composeView() at the wrong pool.
   private readonly binPaths = new Map<string, string[]>();
 
   async materialize(reqs: RuntimeRequirement[], ctx: MaterializeContext): Promise<PooledRuntime[]> {
-    const settled = await Promise.allSettled(reqs.map((req) => this.installOne(req, ctx.cwd)));
+    const settled = await Promise.allSettled(
+      reqs.map((req) => this.installOne(req, ctx.cwd, ctx.poolDir)),
+    );
 
     const pool = new Map<string, PooledRuntime>(); // dedup by (tool, exact version)
     const failures: InstallFailure[] = [];
@@ -118,17 +133,21 @@ export class MiseEnvironmentProvider implements EnvironmentProvider {
     }
 
     const resolved = [...pool.values()];
-    await this.trackConsumption(resolved, ctx.cwd);
+    await this.trackConsumption(resolved, ctx.cwd, ctx.poolDir);
     return resolved;
   }
 
-  private async installOne(req: RuntimeRequirement, cwd: string): Promise<PooledRuntime> {
+  private async installOne(
+    req: RuntimeRequirement,
+    cwd: string,
+    poolDir: string | undefined,
+  ): Promise<PooledRuntime> {
     const spec = req.versionSpec && req.versionSpec !== "latest" ? req.versionSpec : "latest";
     const query = `${req.tool}@${spec}`;
 
-    await mise(["install", query], cwd);
+    await mise(["install", query], cwd, poolDir);
 
-    const installPath = await mise(["where", query], cwd);
+    const installPath = await mise(["where", query], cwd, poolDir);
     const version = installPath.split("/").filter(Boolean).pop();
     if (!version) {
       throw new Error(
@@ -137,10 +156,8 @@ export class MiseEnvironmentProvider implements EnvironmentProvider {
     }
 
     const id = `${req.tool}@${version}`;
-    if (!this.binPaths.has(id)) {
-      const raw = await mise(["bin-paths", `${req.tool}@${version}`], cwd);
-      this.binPaths.set(id, raw.split("\n").filter(Boolean));
-    }
+    const raw = await mise(["bin-paths", `${req.tool}@${version}`], cwd, poolDir);
+    this.binPaths.set(id, raw.split("\n").filter(Boolean));
 
     return { id, tool: req.tool, requested: req.versionSpec, version };
   }
@@ -151,12 +168,16 @@ export class MiseEnvironmentProvider implements EnvironmentProvider {
   // race and lose entries, unlike `mise install`, which is safe per-tool
   // since each tool's install is independent). Already-installed exact
   // versions make this a fast, no-download config write, not a reinstall.
-  private async trackConsumption(pool: PooledRuntime[], cwd: string): Promise<void> {
+  private async trackConsumption(
+    pool: PooledRuntime[],
+    cwd: string,
+    poolDir: string | undefined,
+  ): Promise<void> {
     if (pool.length === 0) return;
     const trackedDir = join(cwd, ".ribosome");
     await mkdir(trackedDir, { recursive: true });
     const queries = pool.map((p) => `${p.tool}@${p.version}`);
-    await mise(["use", ...queries], trackedDir);
+    await mise(["use", ...queries], trackedDir, poolDir);
   }
 
   composeView(pool: PooledRuntime[], select: string[]): EnvironmentDelta {

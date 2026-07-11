@@ -31,16 +31,19 @@ class FakeRegistry {
  * Fake EnvironmentProvider: "installs" by echoing back one PooledRuntime per
  * requirement (version = versionSpec or a fixed placeholder), and records
  * every materialize() call so tests can assert exactly which -- and how
- * many -- requirements actually reached the provider (the dedup proof).
+ * many -- requirements actually reached the provider (the dedup proof), plus
+ * the MaterializeContext each call received (the pool.dir resolution proof).
  */
 class FakeEnvironmentProvider {
   constructor({ failTools = [] } = {}) {
     this.failTools = new Set(failTools);
     this.materializeCalls = [];
+    this.materializeContexts = [];
   }
 
-  async materialize(reqs, _ctx) {
+  async materialize(reqs, ctx) {
     this.materializeCalls.push(reqs);
+    this.materializeContexts.push(ctx);
     const failing = reqs.filter((r) => this.failTools.has(r.tool));
     if (failing.length > 0) {
       throw new Error(`fake provisioning failure: ${failing.map((r) => r.tool).join(", ")}`);
@@ -114,6 +117,37 @@ test("materialize(): shares one pool install across servers that need the same r
     serverB.uses.includes(nodeEntries[0].id),
     "serverB shares the same node pool id as serverA",
   );
+});
+
+test("materialize(): resolves manifest.pool.dir to an absolute path anchored at cwd (#60)", async () => {
+  const environmentProvider = new FakeEnvironmentProvider();
+  const materializer = new Materializer({ environmentProvider, registries: [] });
+
+  await materializer.materialize(baseManifest({ pool: { dir: ".ribosome-pool" } }), {
+    cwd: "/project",
+  });
+
+  assert.equal(environmentProvider.materializeContexts[0].poolDir, "/project/.ribosome-pool");
+});
+
+test("materialize(): uses an absolute manifest.pool.dir as-is, without joining it to cwd", async () => {
+  const environmentProvider = new FakeEnvironmentProvider();
+  const materializer = new Materializer({ environmentProvider, registries: [] });
+
+  await materializer.materialize(baseManifest({ pool: { dir: "/absolute/pool" } }), {
+    cwd: "/project",
+  });
+
+  assert.equal(environmentProvider.materializeContexts[0].poolDir, "/absolute/pool");
+});
+
+test("materialize(): leaves poolDir undefined when the manifest doesn't set pool.dir", async () => {
+  const environmentProvider = new FakeEnvironmentProvider();
+  const materializer = new Materializer({ environmentProvider, registries: [] });
+
+  await materializer.materialize(baseManifest(), { cwd: "/project" });
+
+  assert.equal(environmentProvider.materializeContexts[0].poolDir, undefined);
 });
 
 test("materialize(): isolates each server's composed environment view despite the shared pool", async () => {

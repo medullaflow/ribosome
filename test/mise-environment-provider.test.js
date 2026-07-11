@@ -150,3 +150,35 @@ test(
     );
   },
 );
+
+test(
+  "materialize() honors ctx.poolDir, physically isolating installs from the default shared store (#60)",
+  testOpts,
+  async () => {
+    const provider = new MiseEnvironmentProvider();
+    const cwd = mkdtempSync(join(tmpdir(), "ribosome-mise-test-"));
+    const poolDir = mkdtempSync(join(tmpdir(), "ribosome-mise-pool-"));
+
+    const pool = await withMiseInstallLock(() =>
+      provider.materialize([{ tool: "jq", versionSpec: "latest" }], { cwd, poolDir }),
+    );
+    const jq = pool[0];
+
+    // The install must physically land under the custom pool dir, not
+    // mise's own default global store.
+    const view = provider.composeView(pool, [jq.id]);
+    assert.ok(
+      view.pathPrepend.every((p) => p.startsWith(poolDir)),
+      `pathPrepend should be rooted under poolDir ${poolDir}, got: ${view.pathPrepend.join(", ")}`,
+    );
+
+    // The real acceptance criterion: mise itself, scoped to that same
+    // directory, must independently agree the tool lives there.
+    const misePath = execFileSync("mise", ["where", `jq@${jq.version}`], {
+      cwd,
+      env: { ...process.env, MISE_DATA_DIR: poolDir },
+      encoding: "utf8",
+    }).trim();
+    assert.ok(misePath.startsWith(poolDir));
+  },
+);
