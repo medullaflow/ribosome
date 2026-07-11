@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: © 2026 ribosome contributors
+
+# Publishes this repo's root package to npm as @medullaflow/ribosome.
+# Gated on a published GitHub Release (not on every tag push) so a publish is
+# always a deliberate, human-triggered action.
+#
+# Uses npm Trusted Publishing (OIDC) — no NPM_TOKEN secret, ever. The runner
+# exchanges a short-lived GitHub OIDC token for npm publish rights; nothing
+# long-lived is stored in this repo. Requires `id-token: write` below and, on
+# npmjs.com, a Trusted Publisher configured for this exact repo + workflow
+# filename (see docs.npmjs.com/trusted-publishers). Mirrors the same setup as
+# ribosome-schema's publish-npm.yml — see that file for the fuller writeup of
+# why OIDC over a token.
+#
+# KNOWN LIMITATION (npm/cli#8544): OIDC cannot publish the very FIRST version
+# of a package that has never existed on the registry — npmjs.com requires the
+# package to already exist before you can configure a Trusted Publisher for
+# it. So bootstrapping is a one-time manual step OUTSIDE this workflow:
+#   npm login && npm publish --access public
+# Do this once for v0.1.0, from a local machine. Every release after that goes
+# through this workflow with zero tokens.
+#
+# One-time manual step this workflow cannot do: on npmjs.com, package Settings
+# → Trusted Publisher → GitHub Actions →
+#   Organization or user: medullaflow
+#   Repository: ribosome
+#   Workflow filename: publish-npm.yml   (filename only, not the path — case-sensitive)
+#   Allowed actions: npm publish
+#
+# Two toolchains, deliberately: install/build run on bun (this repo's own
+# tooling, see docs/ARCHITECTURE.md D14), but `bun publish` does not yet
+# support npm's OIDC trusted publishing (oven-sh/bun#24855, still open) — so
+# the actual publish step stays on the npm CLI specifically.
+#
+# Do NOT `npm install -g npm@latest`: Node 24's setup-node image already
+# bundles npm >= 11.5.1, which already satisfies trusted publishing's version
+# floor. See ribosome-schema's publish-npm.yml for the specific breakage a
+# fresh npm install caused there (missing `sigstore` at provenance-attestation
+# time) — the bundled npm sidesteps it entirely.
+
+name: publish-npm
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write # required for OIDC trusted publishing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run build
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+      # No NODE_AUTH_TOKEN here — setting one would make npm fall back to
+      # legacy token auth instead of OIDC trusted publishing. --access public
+      # is redundant with package.json's own publishConfig.access, kept
+      # explicit here to match ribosome-schema's publish-npm.yml.
+      - run: npm publish --access public
