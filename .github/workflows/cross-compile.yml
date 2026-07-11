@@ -56,7 +56,7 @@ jobs:
 
       # One bundle, all five binaries -- what downstream per-target packaging
       # jobs (installers/archives) consume; they never recompile.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ribosome-cross-compiled
           path: |
