@@ -1,0 +1,16 @@
+name: Dependency Review
+
+# Runs only on pull_request: it diffs the dependency manifest against the
+# PR's base, so a new/updated dependency is scanned and its advisory status
+# surfaced as a check on that exact PR -- not a periodic background scan.
+# Free for public repos (medullaflow/ribosome is public) via GitHub's own
+# Dependency Graph + Advisory Database; no external account or secret needed.
+on:
+  pull_request:
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
