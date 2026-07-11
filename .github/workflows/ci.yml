@@ -32,8 +32,33 @@ jobs:
         run: |
           curl -fsSL https://mise.run | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Install, build and test
-        run: bun install && bun run test
+      - name: Install and build
+        run: bun install && bun run build
+      # Retries only on a specific, known-upstream false positive
+      # (oven-sh/bun#23077: bun's node:test compat layer occasionally
+      # mis-detects two real, module-level test() calls in different files as
+      # "nested" when one is a long-running async test -- confirmed reproducible
+      # on this suite's real mise-install/registry integration tests, not
+      # reproducible with synthetic sleeps/subprocess calls of the same shape,
+      # and not fixed as of bun 1.3.14, the latest release). Any *other*
+      # failure exits immediately on the first attempt -- this must never mask
+      # a real, deterministic test regression behind a retry.
+      - name: Test (retries only on the known bun#23077 false positive)
+        run: |
+          set -o pipefail
+          attempt=1
+          max_attempts=2
+          while true; do
+            if ! bun test 2>&1 | tee /tmp/test-output.log; then
+              if [ "$attempt" -lt "$max_attempts" ] && grep -q "test() inside another test() is not yet implemented in Bun" /tmp/test-output.log; then
+                echo "::warning::Known upstream Bun bug (oven-sh/bun#23077) produced a false-positive failure -- retrying (attempt $((attempt + 1))/$max_attempts)"
+                attempt=$((attempt + 1))
+                continue
+              fi
+              exit 1
+            fi
+            break
+          done
       - name: Typecheck the whole tree, including tests (#30)
         run: bun run typecheck:test
       - name: Compileability regression check (bun build --compile)

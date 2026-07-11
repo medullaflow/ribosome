@@ -4,6 +4,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+### Fixed
+- **CI's `test` job retries once on a specific, confirmed upstream Bun bug**
+  ([oven-sh/bun#23077](https://github.com/oven-sh/bun/issues/23077)):
+  bun's `node:test` compat layer occasionally mis-detects two real,
+  module-level `test()` calls in different files as "nested" when one is a
+  long-running async test — surfaced (not caused) by dropping `--parallel`
+  in the coverage-floor change below, since sequential execution puts this
+  suite's real network/mise-install integration tests closer together in
+  bun's scheduler. Confirmed via bun's own issue tracker as a real,
+  independently-reported regression, still present in 1.3.14 (the latest
+  release); not reproducible with synthetic sleeps/subprocess calls of the
+  same shape after repeated attempts to isolate the exact trigger. The
+  retry is narrow, not blanket: it only fires when the output matches the
+  bug's exact error string, and gives up after one retry either way — a
+  real, deterministic test regression fails immediately with no retry. See
+  [`docs/ARCHITECTURE.md` D38](docs/ARCHITECTURE.md#design-decisions).
+
 ### Added
 - **Coverage floor** (`bunfig.toml`, `bun test`'s built-in `coverageThreshold`)
   — the first half of #31. Per-file, not aggregate-only (a new 0%-covered
