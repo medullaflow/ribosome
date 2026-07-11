@@ -21,6 +21,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   Stryker Mutator's bun-test-runner support needs a short spike to confirm
   it actually works before committing to it. See
   [`docs/ARCHITECTURE.md` D37](docs/ARCHITECTURE.md#design-decisions).
+- **Required code-owner review** on every PR (`require_code_owner_review`
+  on the branch-protection ruleset) and an explicit **"Agent-directed
+  contributions"** section in `CONTRIBUTING.md` — closes #34. Most of this
+  repo's code is written by an agent under direction; this makes the
+  existing accountability model (DCO sign-off, `AUTHORS` attribution)
+  explicit for that case rather than leaving it implicit, and defines the
+  human-review gate the automated guardrails ultimately serve. With a
+  single maintainer, every merge today still goes through a repo-admin
+  bypass — a deliberate, visible, audited action, not a workaround — until
+  a second `CODEOWNERS` entry exists. See
+  [`docs/ARCHITECTURE.md` D36](docs/ARCHITECTURE.md#design-decisions).
 - **`bun audit`** (`.github/workflows/audit.yml`, push/PR + weekly schedule)
   and **CodeQL** (`.github/workflows/codeql.yml`, `javascript-typescript`) —
   two of five supply-chain tools suggested in a Copilot code-review comment,
