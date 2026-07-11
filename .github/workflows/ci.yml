@@ -8,14 +8,14 @@ jobs:
   spdx-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
       - run: bun scripts/check-spdx-headers.js --all
 
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
       # Biome (lint + format + import-organize) in CI mode. Pinned to match the
       # @biomejs/biome devDependency in package.json — keep the two in sync.
@@ -26,7 +26,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
       - name: Install mise (for the MiseEnvironmentProvider integration test)
         run: |
