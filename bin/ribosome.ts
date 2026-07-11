@@ -32,9 +32,11 @@ const HELP = `Usage: ribosome <command> [options]
 
 Commands:
   resolve [manifest]   Resolve dependencies into ${LOCKFILE_FILENAME} (default manifest: ribosome.json)
+  prune                Remove runtimes no longer referenced by any tracked project
 
 Options:
   --cwd <dir>          Project root the manifest and lockfile are anchored to (default: cwd)
+  --dry-run            prune: report what would be removed, without removing it
   -h, --help           Show this help message
   -v, --version        Show version number
 `;
@@ -43,9 +45,10 @@ function describeError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-function parseArgs(argv: string[]): { cwd: string; positional: string[] } {
+function parseArgs(argv: string[]): { cwd: string; dryRun: boolean; positional: string[] } {
   const args = [...argv];
   let cwd = process.cwd();
+  let dryRun = false;
   const positional: string[] = [];
   while (args.length > 0) {
     const arg = args.shift() as string;
@@ -53,11 +56,13 @@ function parseArgs(argv: string[]): { cwd: string; positional: string[] } {
       const value = args.shift();
       if (!value) throw new Error("--cwd requires a value");
       cwd = resolvePath(value);
+    } else if (arg === "--dry-run") {
+      dryRun = true;
     } else {
       positional.push(arg);
     }
   }
-  return { cwd, positional };
+  return { cwd, dryRun, positional };
 }
 
 async function runResolve(manifestPath: string, cwd: string): Promise<number> {
@@ -117,6 +122,25 @@ async function runResolve(manifestPath: string, cwd: string): Promise<number> {
   return EXIT_SUCCESS;
 }
 
+async function runPrune(cwd: string, dryRun: boolean): Promise<number> {
+  // Hardcoded to this one concrete provider, same as runResolve -- prune()
+  // is optional on the EnvironmentProvider port for adapters with no native
+  // mechanism, but MiseEnvironmentProvider always implements it.
+  const provider = new MiseEnvironmentProvider();
+  const result = await provider.prune({ cwd }, { dryRun });
+
+  if (result.pruned.length === 0) {
+    console.log("Nothing to prune.");
+    return EXIT_SUCCESS;
+  }
+
+  console.log(`${dryRun ? "Would prune" : "Pruned"} ${result.pruned.length} runtime(s):`);
+  for (const { tool, version } of result.pruned) {
+    console.log(`  - ${tool}@${version}`);
+  }
+  return EXIT_SUCCESS;
+}
+
 async function main(): Promise<number> {
   const argv = process.argv.slice(2);
 
@@ -130,21 +154,25 @@ async function main(): Promise<number> {
   }
 
   const [command, ...rest] = argv;
-  if (command !== "resolve") {
+  if (command !== "resolve" && command !== "prune") {
     console.error(`error: unknown command "${command}"\n`);
     console.error(HELP);
     return EXIT_INVALID_MANIFEST;
   }
 
   let cwd: string;
+  let dryRun: boolean;
   let positional: string[];
   try {
-    ({ cwd, positional } = parseArgs(rest));
+    ({ cwd, dryRun, positional } = parseArgs(rest));
   } catch (err) {
     console.error(`error: ${describeError(err)}`);
     return EXIT_INVALID_MANIFEST;
   }
 
+  if (command === "prune") {
+    return runPrune(cwd, dryRun);
+  }
   return runResolve(positional[0] ?? "ribosome.json", cwd);
 }
 

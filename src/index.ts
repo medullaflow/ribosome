@@ -26,6 +26,9 @@ export type {
   EnvironmentProvider,
   EnvironmentDelta,
   MaterializeContext,
+  PrunedRuntime,
+  PruneContext,
+  PruneResult,
   RuntimeRequirement,
 } from "./ports/environment-provider";
 export type { McpRegistry, RegistryQuery } from "./ports/mcp-registry";

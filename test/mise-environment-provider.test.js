@@ -152,6 +152,78 @@ test(
 );
 
 test(
+  "prune() removes an untracked install but leaves a materialize()-tracked one alone (#61)",
+  testOpts,
+  async () => {
+    const provider = new MiseEnvironmentProvider();
+    const cwd = mkdtempSync(join(tmpdir(), "ribosome-mise-test-"));
+    // Isolated pool dir: prune() is destructive, so this test must never
+    // touch the machine's real default mise store.
+    const poolDir = mkdtempSync(join(tmpdir(), "ribosome-mise-pool-"));
+
+    // A tracked install, via the adapter itself -- must survive pruning.
+    // Pinned to a specific, unusual old version (not "latest"/fuzzy): mise's
+    // tracked-configs protection is NOT scoped per MISE_DATA_DIR -- it's
+    // global by exact tool@version identity (verified) -- so reusing
+    // whatever version another test in this same file resolves+tracks (e.g.
+    // "latest") would make this test's "untracked" half accidentally
+    // inherit that unrelated protection.
+    const [kept] = await withMiseInstallLock(() =>
+      provider.materialize([{ tool: "jq", versionSpec: "1.6" }], { cwd, poolDir }),
+    );
+    assert.equal(kept.version, "1.6");
+
+    // An untracked install of a DIFFERENT exact version of the same tool, in
+    // the same pool, bypassing the adapter (bare `mise install`, exactly the
+    // pre-#59 gap) -- must be removed.
+    await withMiseInstallLock(() =>
+      execFileSync("mise", ["install", "jq@1.7"], {
+        cwd,
+        env: { ...process.env, MISE_DATA_DIR: poolDir },
+      }),
+    );
+
+    // Dry run first: reports the untracked entry, removes nothing.
+    const dryRun = await provider.prune({ cwd, poolDir }, { dryRun: true });
+    assert.ok(
+      dryRun.pruned.some((p) => p.tool === "jq" && p.version === "1.7"),
+      `dry run should report jq@1.7 as prunable, got: ${JSON.stringify(dryRun.pruned)}`,
+    );
+    assert.ok(
+      !dryRun.pruned.some((p) => p.version === "1.6"),
+      "dry run should not report the tracked jq@1.6 install as prunable",
+    );
+    const stillThere = execFileSync("mise", ["where", "jq@1.7"], {
+      cwd,
+      env: { ...process.env, MISE_DATA_DIR: poolDir },
+      encoding: "utf8",
+    }).trim();
+    assert.ok(stillThere.startsWith(poolDir), "dry run must not have actually removed jq@1.7");
+
+    // Real run: removes jq@1.7, leaves jq@1.6's tracked install alone.
+    const real = await provider.prune({ cwd, poolDir }, { dryRun: false });
+    assert.ok(real.pruned.some((p) => p.tool === "jq" && p.version === "1.7"));
+
+    assert.throws(
+      () =>
+        execFileSync("mise", ["where", "jq@1.7"], {
+          cwd,
+          env: { ...process.env, MISE_DATA_DIR: poolDir },
+          stdio: "pipe",
+        }),
+      /./,
+      "jq@1.7 should actually be gone after a real (non-dry-run) prune",
+    );
+    const jqStillThere = execFileSync("mise", ["where", `jq@${kept.version}`], {
+      cwd,
+      env: { ...process.env, MISE_DATA_DIR: poolDir },
+      encoding: "utf8",
+    }).trim();
+    assert.ok(jqStillThere.startsWith(poolDir), "the tracked jq@1.6 install must survive pruning");
+  },
+);
+
+test(
   "materialize() honors ctx.poolDir, physically isolating installs from the default shared store (#60)",
   testOpts,
   async () => {

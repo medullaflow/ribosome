@@ -23,11 +23,12 @@ const REPO_ROOT = join(__dirname, "..");
 const BIN = join(REPO_ROOT, "bin", "ribosome.ts");
 const FIXTURE = join(__dirname, "fixtures", "local-registry.json");
 
-function runCli(args, cwd) {
+function runCli(args, cwd, env) {
   try {
     const stdout = execFileSync("bun", [BIN, ...args], {
       cwd: cwd ?? REPO_ROOT,
       encoding: "utf8",
+      env: env ? { ...process.env, ...env } : process.env,
     });
     return { status: 0, stdout, stderr: "" };
   } catch (err) {
@@ -115,4 +116,53 @@ test("resolve end-to-end against a local file registry writes a valid lockfile a
   const lockfile = JSON.parse(readFileSync(join(cwd, "ribosome.lock.json"), "utf8"));
   assert.equal(lockfile.mcpServers.length, 1);
   assert.equal(lockfile.mcpServers[0].id, "tool");
+});
+
+test("prune --dry-run reports an untracked install without removing it (#61)", {
+  skip: !hasMise() ? "mise not found on PATH" : false,
+  timeout: 180000,
+}, async () => {
+  const cwd = mkdtempSync(join(tmpdir(), "ribosome-cli-test-"));
+  // Isolated pool: prune is destructive, so this test must never touch the
+  // machine's real default mise store. Inherited by the spawned CLI process
+  // via runCli's env param, not the shared process.env (see mise-install-lock
+  // usage elsewhere in this file for why: no mutating shared test state).
+  const poolDir = mkdtempSync(join(tmpdir(), "ribosome-cli-pool-"));
+  const env = { MISE_DATA_DIR: poolDir };
+
+  await withMiseInstallLock(() =>
+    execFileSync("mise", ["install", "jq@1.7"], { cwd, env: { ...process.env, ...env } }),
+  );
+
+  const dryRun = runCli(["prune", "--dry-run"], cwd, env);
+  assert.equal(dryRun.status, 0);
+  assert.match(dryRun.stdout, /Would prune 1 runtime\(s\)/);
+  assert.match(dryRun.stdout, /jq@1\.7/);
+
+  // Must still be there -- a dry run reports, never removes.
+  const stillThere = execFileSync("mise", ["where", "jq@1.7"], {
+    cwd,
+    env: { ...process.env, ...env },
+    encoding: "utf8",
+  }).trim();
+  assert.ok(stillThere.startsWith(poolDir));
+
+  const real = runCli(["prune"], cwd, env);
+  assert.equal(real.status, 0);
+  assert.match(real.stdout, /Pruned 1 runtime\(s\)/);
+
+  assert.throws(
+    () =>
+      execFileSync("mise", ["where", "jq@1.7"], {
+        cwd,
+        env: { ...process.env, ...env },
+        stdio: "pipe",
+      }),
+    /./,
+    "jq@1.7 should actually be gone after a real prune",
+  );
+
+  const nothingLeft = runCli(["prune"], cwd, env);
+  assert.equal(nothingLeft.status, 0);
+  assert.match(nothingLeft.stdout, /Nothing to prune/);
 });
