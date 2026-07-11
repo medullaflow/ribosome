@@ -7,15 +7,15 @@
 // (Materializer.materialize(), see test/materializer.test.js) is exercised
 // with zero filesystem access, per #25's own acceptance criterion.
 
-const { test } = require("node:test");
-const assert = require("node:assert/strict");
-const { readFileSync, mkdtempSync } = require("node:fs");
-const { tmpdir } = require("node:os");
-const { join } = require("node:path");
+import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { test } from "node:test";
+import type { RibosomeLockfile } from "@medullaflow/ribosome-schema";
+import { LOCKFILE_FILENAME, writeLockfile } from "../dist/index.js";
 
-const { writeLockfile, LOCKFILE_FILENAME } = require("../dist/index.js");
-
-const SAMPLE_LOCKFILE = {
+const SAMPLE_LOCKFILE: RibosomeLockfile = {
   schemaVersion: "1",
   resolvedAt: "2026-07-10T00:00:00.000Z",
   runtimePool: [{ id: "node@22.3.0", tool: "node", requested: "22", version: "22.3.0" }],

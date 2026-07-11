@@ -6,22 +6,22 @@
 // official-registry.test.js. test/fixtures/local-registry.json reuses the
 // official registry's own `{ servers: [...] }` bulk-list envelope shape.
 
-const { test } = require("node:test");
-const assert = require("node:assert/strict");
-const { pathToFileURL } = require("node:url");
-const { join } = require("node:path");
+import assert from "node:assert/strict";
+import { join } from "node:path";
+import { test } from "node:test";
+import { pathToFileURL } from "node:url";
 
-const {
+import {
   FileMcpRegistry,
+  InvalidServerDescriptorError,
   RegistryUnreachableError,
   ServerNotFoundError,
-  InvalidServerDescriptorError,
-} = require("../dist/index.js");
+} from "../dist/index.js";
 
 const FIXTURE_URL = pathToFileURL(join(__dirname, "fixtures", "local-registry.json")).href;
 
 function localSource() {
-  return { type: "file", url: FIXTURE_URL };
+  return { type: "file" as const, url: FIXTURE_URL };
 }
 
 test("resolve() reads a named, versioned entry from a local file", async () => {

@@ -43,6 +43,17 @@ const steps = [
     args: ["check", ...(staged ? ["--staged", "--no-errors-on-unmatched"] : [])],
   },
   { label: "Typecheck (tsc)", cmd: "bun", args: ["run", "build"] },
+  // Widened, noEmit-only check: src/ + bin/ + test/ under the same strict
+  // flags, so the test suite (and the CLI entry point, also outside the
+  // build's own src/-scoped rootDir) can't silently drift out of the type
+  // contract they're supposed to be held to (#30). Needs dist/ to already
+  // exist (test files import the built output, not source) -- must run
+  // after the build step above, never before.
+  {
+    label: "Typecheck (tsc, whole tree incl. tests)",
+    cmd: "bun",
+    args: ["run", "typecheck:test"],
+  },
   {
     label: "Architecture fitness function",
     cmd: "bun",

@@ -17,22 +17,22 @@
 // official-registry.test.js's and mise-environment-provider.test.js's own
 // guards, so `bun run test` stays green in environments without either.
 
-const { test } = require("node:test");
-const assert = require("node:assert/strict");
-const { execFileSync } = require("node:child_process");
-const { tmpdir } = require("node:os");
-const { mkdtempSync, readFileSync } = require("node:fs");
-const { join } = require("node:path");
-
-const {
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { test } from "node:test";
+import type { RibosomeManifest } from "@medullaflow/ribosome-schema";
+import {
+  LOCKFILE_FILENAME,
   Materializer,
   MiseEnvironmentProvider,
   OfficialMcpRegistry,
   validateLockfile,
-  LOCKFILE_FILENAME,
   writeLockfile,
-} = require("../dist/index.js");
-const { withMiseInstallLock } = require("./mise-install-lock");
+} from "../dist/index.js";
+import { withMiseInstallLock } from "./mise-install-lock";
 
 const OFFICIAL_URL = "https://registry.modelcontextprotocol.io";
 // Same real, known-published server official-registry.test.js and
@@ -41,7 +41,7 @@ const OFFICIAL_URL = "https://registry.modelcontextprotocol.io";
 // needs to provision node, not something heavier.
 const KNOWN_SERVER = { name: "com.pulsemcp/remote-filesystem", version: "0.1.2" };
 
-function hasNetworkAccess() {
+function hasNetworkAccess(): boolean {
   try {
     execFileSync("curl", ["-fsS", "--max-time", "5", `${OFFICIAL_URL}/v0.1/health`], {
       stdio: "ignore",
@@ -52,7 +52,7 @@ function hasNetworkAccess() {
   }
 }
 
-function hasMise() {
+function hasMise(): boolean {
   try {
     execFileSync("mise", ["--version"], { stdio: "ignore" });
     return true;
@@ -67,7 +67,7 @@ const skipReason = !hasNetworkAccess()
     ? "mise not found on PATH"
     : false;
 // Generous: above the adapter's own 10s resolve timeout and a real
-// `mise install`, and withMiseInstallLock (see ./mise-install-lock.js) can
+// `mise install`, and withMiseInstallLock (see ./mise-install-lock.ts) can
 // make this test queue behind a sibling test FILE's own cold install (a real
 // download + extract + attestation check, empirically ~50s each) first.
 const testOpts = { skip: skipReason, timeout: 180000 };
@@ -78,7 +78,7 @@ test(
   async () => {
     const cwd = mkdtempSync(join(tmpdir(), "ribosome-convergence-test-"));
 
-    const manifest = {
+    const manifest: RibosomeManifest = {
       schemaVersion: "1",
       registries: { default: "official", sources: { official: { url: OFFICIAL_URL } } },
       mcpServers: {
@@ -101,6 +101,7 @@ test(
     // environment provider provisioned the real runtime it needs.
     assert.equal(lockfile.mcpServers.length, 1);
     const fs = lockfile.mcpServers[0];
+    assert.ok(fs);
     assert.equal(fs.id, "fs");
     assert.deepEqual(fs.launch, {
       transport: "stdio",

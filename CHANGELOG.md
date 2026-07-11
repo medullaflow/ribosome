@@ -15,6 +15,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 - `AGENTS.md` — machine-readable operating contract for AI coding agents
   (toolchain, setup, commands, hard constraints), the agent-facing counterpart
   to `CONTRIBUTING.md`. README notes the human+agent development model.
+- **Stricter `tsconfig.json`** (`noUncheckedIndexedAccess`,
+  `exactOptionalPropertyTypes`, `noImplicitOverride`,
+  `noFallthroughCasesInSwitch`, `noImplicitReturns`) — another
+  [Guardrails & Governance](https://github.com/medullaflow/ribosome/milestones)
+  item: catching the shapes-and-nulls mistakes generated code is most prone to
+  at compile time rather than runtime. **The whole test suite moved from
+  `.js` to typechecked `.ts`** (a new `tsconfig.check.json` + `bun run
+  typecheck:test`, CI-enforced, covering `src/` + `bin/` + `test/` together —
+  `bin/ribosome.ts` had no compiler coverage at all before this, only
+  `bun build`'s own transpilation), so a type mismatch in a test now fails
+  the build instead of only surfacing at `bun test` runtime.
+
+### Fixed
+- Turning on `exactOptionalPropertyTypes` surfaced (and this fixes) three
+  spots that explicitly assigned `undefined` to an optional field
+  (`MaterializeContext.refresh`/`.poolDir`, `ResolvedMcpServer.permissions`,
+  `RegistryQuery.version`) instead of omitting the key — harmless before,
+  but caught one real, previously-undetected test regression along the way:
+  `resolve-mcp-server.test.ts`'s own fixtures still asserted the old
+  key-present-as-undefined shape via `assert.deepEqual`, silently broken
+  since the `#60` pool-dir work switched those call sites to the
+  correct key-omitting construction. Fixed the assertions to match the
+  now-correct behavior, not reverted.
 
 ### Changed
 - **Relicensed from `AGPL-3.0-or-later` to `MPL-2.0`.** ribosome is meant to
@@ -74,9 +97,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 - **Docs** — rewritten `README.md`; [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
   with the architecture map, dependency rules, data model, phased pipeline, and
   a design-decisions record; [`ROADMAP.md`](ROADMAP.md).
-- `test/schema-dependency.test.js` — integration smoke test proving the
+- `test/schema-dependency.test.ts` — integration smoke test proving the
   `@medullaflow/ribosome-schema` dependency wiring works end-to-end.
-- `test/mise-environment-provider.test.js` — real mise integration tests.
+- `test/mise-environment-provider.test.ts` — real mise integration tests.
 - CI (`ci.yml`) now actually runs `npm test` (it never did before), checks out
   the `ribosome-schema` sibling the `file:` dependency needs, and installs mise.
 

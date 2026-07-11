@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "rootDir": ".",
+    "allowJs": true
+  },
+  "include": ["src/**/*", "bin/**/*", "test/**/*", "scripts/architecture-rules.js"]
+}

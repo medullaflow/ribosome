@@ -8,10 +8,10 @@
 // import and call the re-exported schema helpers end-to-end. Runs against the
 // built output (dist/), so `npm test` builds first.
 
-const { test } = require("node:test");
-const assert = require("node:assert/strict");
+import assert from "node:assert/strict";
+import { test } from "node:test";
 
-const { checkManifest, SCHEMA_VERSION } = require("../dist/index.js");
+import { checkManifest, SCHEMA_VERSION } from "../dist/index.js";
 
 test("re-exports @medullaflow/ribosome-schema and validates through it", () => {
   assert.equal(SCHEMA_VERSION, "1");

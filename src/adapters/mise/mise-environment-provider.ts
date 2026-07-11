@@ -130,7 +130,9 @@ export class MiseEnvironmentProvider implements EnvironmentProvider {
       if (result.status === "fulfilled") {
         pool.set(result.value.id, result.value);
       } else {
-        const req = reqs[i];
+        // reqs[i] always exists: settled is reqs.map(...), so the two arrays
+        // are index-aligned by construction.
+        const req = reqs[i] as RuntimeRequirement;
         failures.push({
           tool: req.tool,
           versionSpec: req.versionSpec,

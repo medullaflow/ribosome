@@ -8,18 +8,25 @@
 // acceptance criterion: the manifest-to-lockfile path must be testable
 // independent of any real adapter being available in the test run.
 
-const { test } = require("node:test");
-const assert = require("node:assert/strict");
-
-const { Materializer, ResolutionError } = require("../dist/index.js");
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import type { McpServerJson, PooledRuntime, RibosomeManifest } from "@medullaflow/ribosome-schema";
+import { Materializer, ResolutionError } from "../dist/index.js";
+import type {
+  EnvironmentDelta,
+  EnvironmentProvider,
+  MaterializeContext,
+  RuntimeRequirement,
+} from "../src/ports/environment-provider";
+import type { McpRegistry, RegistryQuery } from "../src/ports/mcp-registry";
 
 /** Fake McpRegistry: resolves whatever server.json map it was constructed with. */
-class FakeRegistry {
-  constructor(type, servers) {
-    this.type = type;
-    this.servers = servers; // name -> McpServerJson | Error
-  }
-  async resolve(query) {
+class FakeRegistry implements McpRegistry {
+  constructor(
+    readonly type: string,
+    private readonly servers: Record<string, McpServerJson | Error>,
+  ) {}
+  async resolve(query: RegistryQuery): Promise<McpServerJson> {
     const entry = this.servers[query.name];
     if (entry instanceof Error) throw entry;
     if (!entry) throw new Error(`FakeRegistry: no fixture for "${query.name}"`);
@@ -34,14 +41,16 @@ class FakeRegistry {
  * many -- requirements actually reached the provider (the dedup proof), plus
  * the MaterializeContext each call received (the pool.dir resolution proof).
  */
-class FakeEnvironmentProvider {
-  constructor({ failTools = [] } = {}) {
+class FakeEnvironmentProvider implements EnvironmentProvider {
+  private readonly failTools: Set<string>;
+  readonly materializeCalls: RuntimeRequirement[][] = [];
+  readonly materializeContexts: MaterializeContext[] = [];
+
+  constructor({ failTools = [] }: { failTools?: string[] } = {}) {
     this.failTools = new Set(failTools);
-    this.materializeCalls = [];
-    this.materializeContexts = [];
   }
 
-  async materialize(reqs, ctx) {
+  async materialize(reqs: RuntimeRequirement[], ctx: MaterializeContext): Promise<PooledRuntime[]> {
     this.materializeCalls.push(reqs);
     this.materializeContexts.push(ctx);
     const failing = reqs.filter((r) => this.failTools.has(r.tool));
@@ -56,7 +65,7 @@ class FakeEnvironmentProvider {
     }));
   }
 
-  composeView(pool, select) {
+  composeView(pool: PooledRuntime[], select: string[]): EnvironmentDelta {
     for (const id of select) {
       if (!pool.some((p) => p.id === id)) throw new Error(`unknown pool id "${id}"`);
     }
@@ -64,14 +73,14 @@ class FakeEnvironmentProvider {
   }
 }
 
-const SERVER_A = {
+const SERVER_A: McpServerJson = {
   name: "com.example/a",
   description: "needs node",
   version: "1.0.0",
   packages: [{ registryType: "npm", identifier: "@example/a", transport: { type: "stdio" } }],
 };
 
-const SERVER_B = {
+const SERVER_B: McpServerJson = {
   name: "com.example/b",
   description: "needs node and python",
   version: "1.0.0",
@@ -81,7 +90,7 @@ const SERVER_B = {
   ],
 };
 
-function baseManifest(extra = {}) {
+function baseManifest(extra: Partial<RibosomeManifest> = {}): RibosomeManifest {
   return {
     schemaVersion: "1",
     runtimes: { jq: "1.7" },
@@ -103,7 +112,7 @@ test("materialize(): shares one pool install across servers that need the same r
   // Exactly one materialize() call, with one entry per DISTINCT tool -- not
   // one per (server, tool) pair. jq (project) + node (A, B) + python (B).
   assert.equal(environmentProvider.materializeCalls.length, 1);
-  const reqTools = environmentProvider.materializeCalls[0].map((r) => r.tool).sort();
+  const reqTools = environmentProvider.materializeCalls[0]?.map((r) => r.tool).sort();
   assert.deepEqual(reqTools, ["jq", "node", "python"]);
 
   // The pool itself has exactly one "node" entry, shared by both A and B.
@@ -112,9 +121,9 @@ test("materialize(): shares one pool install across servers that need the same r
 
   const serverA = lockfile.mcpServers.find((s) => s.id === "serverA");
   const serverB = lockfile.mcpServers.find((s) => s.id === "serverB");
-  assert.deepEqual(serverA.uses, [nodeEntries[0].id]);
+  assert.deepEqual(serverA?.uses, [nodeEntries[0]?.id]);
   assert.ok(
-    serverB.uses.includes(nodeEntries[0].id),
+    serverB?.uses?.includes(nodeEntries[0]?.id ?? ""),
     "serverB shares the same node pool id as serverA",
   );
 });
@@ -127,7 +136,7 @@ test("materialize(): resolves manifest.pool.dir to an absolute path anchored at 
     cwd: "/project",
   });
 
-  assert.equal(environmentProvider.materializeContexts[0].poolDir, "/project/.ribosome-pool");
+  assert.equal(environmentProvider.materializeContexts[0]?.poolDir, "/project/.ribosome-pool");
 });
 
 test("materialize(): uses an absolute manifest.pool.dir as-is, without joining it to cwd", async () => {
@@ -138,7 +147,7 @@ test("materialize(): uses an absolute manifest.pool.dir as-is, without joining i
     cwd: "/project",
   });
 
-  assert.equal(environmentProvider.materializeContexts[0].poolDir, "/absolute/pool");
+  assert.equal(environmentProvider.materializeContexts[0]?.poolDir, "/absolute/pool");
 });
 
 test("materialize(): leaves poolDir undefined when the manifest doesn't set pool.dir", async () => {
@@ -147,7 +156,7 @@ test("materialize(): leaves poolDir undefined when the manifest doesn't set pool
 
   await materializer.materialize(baseManifest(), { cwd: "/project" });
 
-  assert.equal(environmentProvider.materializeContexts[0].poolDir, undefined);
+  assert.equal(environmentProvider.materializeContexts[0]?.poolDir, undefined);
 });
 
 test("materialize(): isolates each server's composed environment view despite the shared pool", async () => {
@@ -160,27 +169,27 @@ test("materialize(): isolates each server's composed environment view despite th
   const serverB = lockfile.mcpServers.find((s) => s.id === "serverB");
 
   // A needs only node; B needs node AND python. A's view must not leak B's python path.
-  assert.equal(serverA.uses.length, 1);
-  assert.equal(serverB.uses.length, 2);
-  assert.ok(!serverA.environment.pathPrepend.some((p) => p.includes("python")));
-  assert.ok(serverB.environment.pathPrepend.some((p) => p.includes("python")));
+  assert.equal(serverA?.uses?.length, 1);
+  assert.equal(serverB?.uses?.length, 2);
+  assert.ok(!serverA?.environment.pathPrepend.some((p) => p.includes("python")));
+  assert.ok(serverB?.environment.pathPrepend.some((p) => p.includes("python")));
 
   // Neither server's view leaks the project's own "jq" pool entry.
-  assert.ok(!serverA.environment.pathPrepend.some((p) => p.includes("jq")));
-  assert.ok(!serverB.environment.pathPrepend.some((p) => p.includes("jq")));
+  assert.ok(!serverA?.environment.pathPrepend.some((p) => p.includes("jq")));
+  assert.ok(!serverB?.environment.pathPrepend.some((p) => p.includes("jq")));
   assert.ok(lockfile.project.pathPrepend.some((p) => p.includes("jq")));
 });
 
 // Dependency rule 4 (docs/ARCHITECTURE.md#dependency-rules): the lockfile is
 // declarative and portable -- no shell/activation snippets leak into it. This
 // is a data-shape property, not an import-graph one, so unlike rules 1-3 it's
-// not covered by the architecture fitness function (test/architecture-fitness.test.js) --
+// not covered by the architecture fitness function (test/architecture-fitness.test.ts) --
 // it's enforced here, behaviorally, plus structurally by the standard's own
 // JSON Schema (Environment has `additionalProperties: false` and no
 // `activationHook` field at all -- see @medullaflow/ribosome-schema).
 test("materialize(): strips the port-internal activationHook from every environment view (dependency rule 4)", async () => {
   class ActivationHookLeakingProvider extends FakeEnvironmentProvider {
-    composeView(pool, select) {
+    override composeView(pool: PooledRuntime[], select: string[]): EnvironmentDelta {
       return { ...super.composeView(pool, select), activationHook: "source /some/activate.sh" };
     }
   }
@@ -207,10 +216,10 @@ test("materialize(): a process entry runs inside the project's own pool view plu
 
   const serverC = lockfile.mcpServers.find((s) => s.id === "serverC");
   const jqPoolIds = lockfile.runtimePool.filter((p) => p.tool === "jq").map((p) => p.id);
-  assert.deepEqual(serverC.uses, jqPoolIds); // same selection as the project's own view
-  assert.deepEqual(serverC.launch, { transport: "stdio", command: ["npx", "-y", "@foo/bar"] });
-  assert.equal(serverC.environment.envVars.FOO, "bar");
-  assert.deepEqual(serverC.environment.pathPrepend, lockfile.project.pathPrepend);
+  assert.deepEqual(serverC?.uses, jqPoolIds); // same selection as the project's own view
+  assert.deepEqual(serverC?.launch, { transport: "stdio", command: ["npx", "-y", "@foo/bar"] });
+  assert.equal(serverC?.environment.envVars.FOO, "bar");
+  assert.deepEqual(serverC?.environment.pathPrepend, lockfile.project.pathPrepend);
 });
 
 test("materialize(): the full manifest-to-lockfile path needs no real registry or environment provider", async () => {
@@ -218,7 +227,7 @@ test("materialize(): the full manifest-to-lockfile path needs no real registry o
   const environmentProvider = new FakeEnvironmentProvider();
   const materializer = new Materializer({ environmentProvider, registries: [registry] });
 
-  const manifest = {
+  const manifest: RibosomeManifest = {
     schemaVersion: "1",
     registries: { default: "official", sources: { official: { url: "https://example.test" } } },
     mcpServers: {
@@ -230,7 +239,7 @@ test("materialize(): the full manifest-to-lockfile path needs no real registry o
   assert.equal(lockfile.schemaVersion, "1");
   assert.ok(lockfile.resolvedAt);
   assert.equal(lockfile.mcpServers.length, 1);
-  assert.deepEqual(lockfile.mcpServers[0].launch, {
+  assert.deepEqual(lockfile.mcpServers[0]?.launch, {
     transport: "stdio",
     command: ["npx", "@example/a"],
   });
@@ -244,7 +253,7 @@ test("materialize(): aggregates a registry-resolution failure and an environment
   const environmentProvider = new FakeEnvironmentProvider({ failTools: ["node"] });
   const materializer = new Materializer({ environmentProvider, registries: [registry] });
 
-  const manifest = {
+  const manifest: RibosomeManifest = {
     schemaVersion: "1",
     registries: { default: "official", sources: { official: { url: "https://example.test" } } },
     mcpServers: {
@@ -253,12 +262,12 @@ test("materialize(): aggregates a registry-resolution failure and an environment
     },
   };
 
-  await assert.rejects(materializer.materialize(manifest, { cwd: "/project" }), (err) => {
+  await assert.rejects(materializer.materialize(manifest, { cwd: "/project" }), (err: unknown) => {
     assert.ok(err instanceof ResolutionError);
     const byKind = Object.fromEntries(err.failures.map((f) => [f.kind, f]));
-    assert.equal(byKind.mcpServer.id, "badServer");
-    assert.match(byKind.mcpServer.reason, /boom: registry lookup failed/);
-    assert.equal(byKind.runtime.id, "node");
+    assert.equal(byKind.mcpServer?.id, "badServer");
+    assert.match(byKind.mcpServer?.reason ?? "", /boom: registry lookup failed/);
+    assert.equal(byKind.runtime?.id, "node");
     return true;
   });
 });
@@ -270,20 +279,23 @@ test("materialize(): reports every independent failure (registry lookup + inline
   const environmentProvider = new FakeEnvironmentProvider({ failTools: ["node"] });
   const materializer = new Materializer({ environmentProvider, registries: [registry] });
 
-  const manifest = {
+  const manifest: RibosomeManifest = {
     schemaVersion: "1",
     registries: { default: "official", sources: { official: { url: "https://example.test" } } },
     mcpServers: {
       badRegistryServer: { source: "registry", name: "bad" },
       badInlineServer: {
         source: "inline",
-        server: { name: "com.example/malformed", description: "missing required version" },
+        server: {
+          name: "com.example/malformed",
+          description: "missing required version",
+        } as McpServerJson,
       },
       goodServer: { source: "inline", server: SERVER_A },
     },
   };
 
-  await assert.rejects(materializer.materialize(manifest, { cwd: "/project" }), (err) => {
+  await assert.rejects(materializer.materialize(manifest, { cwd: "/project" }), (err: unknown) => {
     assert.ok(err instanceof ResolutionError);
     assert.equal(
       err.failures.length,
@@ -292,11 +304,11 @@ test("materialize(): reports every independent failure (registry lookup + inline
     );
 
     const byId = Object.fromEntries(err.failures.map((f) => [f.id, f]));
-    assert.equal(byId.badRegistryServer.kind, "mcpServer");
-    assert.match(byId.badRegistryServer.reason, /boom: registry lookup failed/);
-    assert.equal(byId.badInlineServer.kind, "mcpServer");
-    assert.match(byId.badInlineServer.reason, /not a valid McpServerJson/);
-    assert.equal(byId.node.kind, "runtime");
+    assert.equal(byId.badRegistryServer?.kind, "mcpServer");
+    assert.match(byId.badRegistryServer?.reason ?? "", /boom: registry lookup failed/);
+    assert.equal(byId.badInlineServer?.kind, "mcpServer");
+    assert.match(byId.badInlineServer?.reason ?? "", /not a valid McpServerJson/);
+    assert.equal(byId.node?.kind, "runtime");
     return true;
   });
 });

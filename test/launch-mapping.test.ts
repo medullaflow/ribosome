@@ -11,15 +11,15 @@
 // are covered separately below with hand-built McpServerJson fixtures, no
 // network needed -- mirroring resolve-mcp-server.test.js's fake-vs-real split.
 
-const { test } = require("node:test");
-const assert = require("node:assert/strict");
-const { execFileSync } = require("node:child_process");
-
-const { deriveLaunch } = require("../dist/index.js");
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { test } from "node:test";
+import type { McpServerJson } from "@medullaflow/ribosome-schema";
+import { deriveLaunch } from "../dist/index.js";
 
 const OFFICIAL_URL = "https://registry.modelcontextprotocol.io";
 
-function hasNetworkAccess() {
+function hasNetworkAccess(): boolean {
   try {
     execFileSync("curl", ["-fsS", "--max-time", "5", `${OFFICIAL_URL}/v0.1/health`], {
       stdio: "ignore",
@@ -40,7 +40,7 @@ const testOpts = {
   timeout: 20000,
 };
 
-function fetchServer(name, version) {
+function fetchServer(name: string, version: string): McpServerJson {
   const url = `${OFFICIAL_URL}/v0.1/servers/${encodeURIComponent(name)}/versions/${version}`;
   // --max-time above the ~5s this normally takes, with headroom for the
   // concurrent load bun test --parallel now puts on the live registry.
@@ -81,7 +81,7 @@ test(
 // ── Pure dispatch/error-path cases: hand-built fixtures, no network ─────────
 
 test("deriveLaunch(): prefers the first package it can actually invoke over an earlier unsupported one", () => {
-  const server = {
+  const server: McpServerJson = {
     name: "com.example/mixed",
     description: "test",
     version: "1.0.0",
@@ -104,7 +104,7 @@ test("deriveLaunch(): prefers the first package it can actually invoke over an e
 });
 
 test("deriveLaunch(): falls back to a remote when no declared package is launchable", () => {
-  const server = {
+  const server: McpServerJson = {
     name: "com.example/oci-with-remote-fallback",
     description: "test",
     version: "1.0.0",
@@ -121,7 +121,7 @@ test("deriveLaunch(): falls back to a remote when no declared package is launcha
 });
 
 test("deriveLaunch(): explicit runtimeHint overrides the registryType default", () => {
-  const server = {
+  const server: McpServerJson = {
     name: "com.example/podman",
     description: "test",
     version: "1.0.0",
@@ -142,7 +142,7 @@ test("deriveLaunch(): explicit runtimeHint overrides the registryType default", 
 });
 
 test("deriveLaunch(): named argument with a value renders as two tokens", () => {
-  const server = {
+  const server: McpServerJson = {
     name: "com.example/named-arg",
     description: "test",
     version: "1.0.0",
@@ -163,7 +163,7 @@ test("deriveLaunch(): named argument with a value renders as two tokens", () => 
 });
 
 test("deriveLaunch(): argument with no literal value (only valueHint) throws", () => {
-  const server = {
+  const server: McpServerJson = {
     name: "com.example/unfilled-arg",
     description: "test",
     version: "1.0.0",
@@ -181,6 +181,10 @@ test("deriveLaunch(): argument with no literal value (only valueHint) throws", (
 });
 
 test("deriveLaunch(): no packages and no remotes throws", () => {
-  const server = { name: "com.example/empty", description: "test", version: "1.0.0" };
+  const server: McpServerJson = {
+    name: "com.example/empty",
+    description: "test",
+    version: "1.0.0",
+  };
   assert.throws(() => deriveLaunch(server), /declares neither packages nor remotes/);
 });
