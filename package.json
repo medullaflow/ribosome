@@ -27,7 +27,7 @@
     "check:architecture": "bun scripts/check-architecture.js"
   },
   "dependencies": {
-    "@medullaflow/ribosome-schema": "^0.1.8"
+    "@medullaflow/ribosome-schema": "^0.1.9"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.3",

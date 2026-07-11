@@ -31,6 +31,16 @@ export interface MaterializeContext {
   cwd: string;
   /** Ignore any cached/locked state and re-resolve from scratch. */
   refresh?: boolean;
+  /**
+   * Absolute directory to materialize the pool into, if the manifest set
+   * `pool.dir` (see @medullaflow/ribosome-schema's RibosomeManifest) — the
+   * caller resolves it to an absolute path before this point, this port
+   * never does path resolution itself. Omitted means the provider's own
+   * default, typically a store shared across projects that maximizes
+   * install reuse; setting it trades that reuse for isolation. A provider
+   * with no relocatable store may ignore this.
+   */
+  poolDir?: string;
 }
 
 /**

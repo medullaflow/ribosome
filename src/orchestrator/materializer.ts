@@ -14,6 +14,7 @@
 //   5. compose isolated environment views (project + per server)
 //   6. assemble the lockfile, aggregating ALL failures
 //
+import { resolve as resolvePath } from "node:path";
 import type {
   Environment,
   PooledRuntime,
@@ -152,11 +153,17 @@ export class Materializer implements DependencyMaterializer {
     // Phase 4: materialize the deduplicated pool. Even if some servers failed to
     // resolve above, still attempt this so environment failures surface in the
     // same pass instead of a fix-one-rerun loop.
+    // manifest.pool.dir is resolved relative to the project root (cwd), same
+    // anchor as everything else here -- not the manifest file's own location,
+    // which Materializer never sees (only the already-parsed manifest value).
+    const poolDir = manifest.pool?.dir ? resolvePath(options.cwd, manifest.pool.dir) : undefined;
+
     let pool: PooledRuntime[] = [];
     try {
       pool = await this.deps.environmentProvider.materialize(poolRequirements, {
         cwd: options.cwd,
         refresh: options.refresh,
+        poolDir,
       });
     } catch (err) {
       failures.push({
