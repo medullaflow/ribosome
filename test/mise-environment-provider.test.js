@@ -19,6 +19,7 @@ const { mkdtempSync } = require("node:fs");
 const { join } = require("node:path");
 
 const { MiseEnvironmentProvider } = require("../dist/index.js");
+const { withMiseInstallLock } = require("./mise-install-lock");
 
 function hasMise() {
   try {
@@ -30,19 +31,25 @@ function hasMise() {
 }
 
 const skip = !hasMise();
-const testOpts = { skip: skip ? "mise not found on PATH" : false };
+// Generous: withMiseInstallLock (see ./mise-install-lock.js) can make this
+// test queue behind a sibling test FILE's own cold install (a real download +
+// extract + attestation check, empirically ~50s each) before it even starts
+// its own real work.
+const testOpts = { skip: skip ? "mise not found on PATH" : false, timeout: 180000 };
 
 test("materialize() installs and dedups by exact resolved version", testOpts, async () => {
   const provider = new MiseEnvironmentProvider();
   const cwd = mkdtempSync(join(tmpdir(), "ribosome-mise-test-"));
 
-  const pool = await provider.materialize(
-    [
-      { tool: "jq", versionSpec: "latest" },
-      { tool: "node", versionSpec: "22" },
-      { tool: "node", versionSpec: "22.23" }, // different spec, same tool family
-    ],
-    { cwd },
+  const pool = await withMiseInstallLock(() =>
+    provider.materialize(
+      [
+        { tool: "jq", versionSpec: "latest" },
+        { tool: "node", versionSpec: "22" },
+        { tool: "node", versionSpec: "22.23" }, // different spec, same tool family
+      ],
+      { cwd },
+    ),
   );
 
   const jq = pool.find((p) => p.tool === "jq");
@@ -61,7 +68,9 @@ test("composeView() produces a pathPrepend that resolves the right binary", test
   const provider = new MiseEnvironmentProvider();
   const cwd = mkdtempSync(join(tmpdir(), "ribosome-mise-test-"));
 
-  const pool = await provider.materialize([{ tool: "node", versionSpec: "22" }], { cwd });
+  const pool = await withMiseInstallLock(() =>
+    provider.materialize([{ tool: "node", versionSpec: "22" }], { cwd }),
+  );
   const node = pool[0];
 
   const view = provider.composeView(pool, [node.id]);

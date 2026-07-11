@@ -17,6 +17,8 @@ const { mkdtempSync, writeFileSync, readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const { pathToFileURL } = require("node:url");
 
+const { withMiseInstallLock } = require("./mise-install-lock");
+
 const REPO_ROOT = join(__dirname, "..");
 const BIN = join(REPO_ROOT, "bin", "ribosome.ts");
 const FIXTURE = join(__dirname, "fixtures", "local-registry.json");
@@ -88,7 +90,10 @@ test("resolve against a schema-invalid manifest exits 1 (invalid manifest)", () 
 
 test("resolve end-to-end against a local file registry writes a valid lockfile and exits 0", {
   skip: !hasMise() ? "mise not found on PATH" : false,
-  timeout: 30000,
+  // Generous: withMiseInstallLock (see ./mise-install-lock.js) can make this
+  // test queue behind a sibling test FILE's own cold install (a real
+  // download + extract + attestation check, empirically ~50s each) first.
+  timeout: 180000,
 }, async () => {
   const cwd = mkdtempSync(join(tmpdir(), "ribosome-cli-test-"));
   const manifest = {
@@ -103,7 +108,7 @@ test("resolve end-to-end against a local file registry writes a valid lockfile a
   };
   writeFileSync(join(cwd, "ribosome.json"), JSON.stringify(manifest));
 
-  const { status, stdout } = runCli(["resolve"], cwd);
+  const { status, stdout } = await withMiseInstallLock(() => runCli(["resolve"], cwd));
   assert.equal(status, 0);
   assert.match(stdout, /Resolved 1 MCP server\(s\) and \d+ runtime\(s\)/);
 
