@@ -21,8 +21,48 @@
 // version (not the original spec), so a later install of a newer version
 // under the same fuzzy prefix (e.g. mise re-pointing a "22" symlink) can
 // never silently change an already-resolved pool entry's bin path.
+//
+// Tracking (#59): `mise install` alone leaves an install invisible to mise's
+// OWN usage tracking (`~/.local/state/mise/tracked-configs`, which `mise
+// prune`/`mise ls --prunable` read) — verified: a bare `mise install` prints
+// mise's own "not activated — it is not in any config file" warning, and is
+// immediately reported by `mise ls --prunable`. An unrelated `mise prune`
+// run anywhere else on the same machine can silently delete a version a
+// ribosome-managed project still depends on. `trackConsumption()` closes
+// that gap by registering every resolved pool entry with `mise use`.
+//
+// The one non-obvious part, verified empirically after an initial wrong
+// attempt: `mise use --path <arbitrary file>` writes a perfectly correct
+// tools file, but does NOT register a tracked-configs entry — it is
+// silently invisible to `mise ls --prunable`/`mise prune` regardless, no
+// different from a bare `mise install`. Tracking only registers through
+// mise's own DEFAULT filename discovery (a bare `mise use tool@version`
+// resolving `<cwd>/mise.toml`) — so this runs the subprocess itself with its
+// `cwd` set to a dedicated subdirectory (`<projectRoot>/.ribosome/`) and
+// lets default resolution write `mise.toml` there, rather than pointing
+// `--path` at an arbitrary location from the project root. Confirmed
+// reference-counted correctly this way: independent project directories
+// tracking the same tool@version are counted independently; removing one's
+// reference while another remains correctly keeps the shared install;
+// removing the last reference correctly frees it — same "inherit the
+// backend's mechanism, don't reimplement it" precedent as pool dedup
+// itself. The subdirectory is project-local and adapter-internal (see this
+// file's own module comment), never the project root itself: a `mise.toml`
+// in a project's own root is user-owned config, not this adapter's to write
+// into.
+//
+// Known limitation: `mise use` only ever ADDS entries to a tools file —
+// verified there is no built-in "replace with exactly this set" mode. A tool
+// a project stops depending on stays tracked (and thus prune-protected)
+// indefinitely rather than becoming collectible right away. This is a
+// conservative bias (never LESS protected than before this fix), not a
+// correctness gap — the bug this closes is silent deletion of an in-use
+// tool, which this fully fixes; tightening "untrack promptly on drop" is a
+// separate, later concern if it ever matters in practice.
 
 import { execFile } from "node:child_process";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import type { PooledRuntime } from "@medullaflow/ribosome-schema";
 import type {
@@ -77,7 +117,9 @@ export class MiseEnvironmentProvider implements EnvironmentProvider {
       );
     }
 
-    return [...pool.values()];
+    const resolved = [...pool.values()];
+    await this.trackConsumption(resolved, ctx.cwd);
+    return resolved;
   }
 
   private async installOne(req: RuntimeRequirement, cwd: string): Promise<PooledRuntime> {
@@ -101,6 +143,20 @@ export class MiseEnvironmentProvider implements EnvironmentProvider {
     }
 
     return { id, tool: req.tool, requested: req.versionSpec, version };
+  }
+
+  // Registers every resolved entry with mise's OWN tracked-configs mechanism
+  // in one batched call (never per-tool/concurrently -- see #59's own
+  // investigation: concurrent `mise use` calls against the SAME tools file
+  // race and lose entries, unlike `mise install`, which is safe per-tool
+  // since each tool's install is independent). Already-installed exact
+  // versions make this a fast, no-download config write, not a reinstall.
+  private async trackConsumption(pool: PooledRuntime[], cwd: string): Promise<void> {
+    if (pool.length === 0) return;
+    const trackedDir = join(cwd, ".ribosome");
+    await mkdir(trackedDir, { recursive: true });
+    const queries = pool.map((p) => `${p.tool}@${p.version}`);
+    await mise(["use", ...queries], trackedDir);
   }
 
   composeView(pool: PooledRuntime[], select: string[]): EnvironmentDelta {
