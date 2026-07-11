@@ -43,6 +43,23 @@ export interface MaterializeContext {
   poolDir?: string;
 }
 
+export interface PruneContext {
+  /** Project root, mirroring MaterializeContext.cwd. */
+  cwd: string;
+  /** Same meaning as MaterializeContext.poolDir -- scopes pruning to that pool if set. */
+  poolDir?: string;
+}
+
+/** A single runtime a prune() call removed (or, under a dry run, would remove). */
+export interface PrunedRuntime {
+  tool: string;
+  version: string;
+}
+
+export interface PruneResult {
+  pruned: PrunedRuntime[];
+}
+
 /**
  * Resolves runtime requirements into a deduplicated pool, and composes isolated
  * environment views over that pool.
@@ -67,4 +84,14 @@ export interface EnvironmentProvider {
    * lockfile later needs no provider at all.
    */
   composeView(pool: PooledRuntime[], select: string[]): EnvironmentDelta;
+
+  /**
+   * Optional: removes runtimes the backend's own mechanism considers no
+   * longer referenced by any tracked consumer (see #59's tracking, which
+   * this reads). Adapters with no such native mechanism may omit this. Never
+   * called by materialize() itself -- pruning is destructive (it deletes
+   * installed tool versions from disk) and must be an explicit, separate,
+   * caller-invoked action, never a side effect of an unrelated resolve.
+   */
+  prune?(ctx: PruneContext, options?: { dryRun?: boolean }): Promise<PruneResult>;
 }

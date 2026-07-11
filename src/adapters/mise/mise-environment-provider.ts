@@ -65,6 +65,15 @@
 // install/where/bin-paths AND for the tracking `mise use` call, each fully
 // scoped to that directory (its own `mise ls --prunable` view is isolated
 // from the default global store, no cross-pollination in either direction).
+//
+// prune() (#61): `mise prune` has no --json output of its own, so this reads
+// the removal set from `mise ls --prunable --json` (a stable, structured
+// `{ [tool]: [{version, ...}] }` shape, verified empirically) BEFORE pruning
+// and returns that as the result -- rather than trying to parse `mise
+// prune`'s own human-formatted, log-style stdout. Verified end-to-end in an
+// isolated pool dir: an untracked install is correctly reported prunable,
+// `mise prune --yes` removes it for real, and it's gone from both disk and a
+// follow-up `mise ls --prunable --json`.
 
 import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
@@ -75,6 +84,8 @@ import type {
   EnvironmentDelta,
   EnvironmentProvider,
   MaterializeContext,
+  PruneContext,
+  PruneResult,
   RuntimeRequirement,
 } from "../../ports/environment-provider";
 
@@ -91,6 +102,9 @@ interface InstallFailure {
   versionSpec: string;
   reason: string;
 }
+
+/** Shape of `mise ls --prunable --json`'s stdout: tool -> its prunable versions. */
+type PrunableByTool = Record<string, Array<{ version: string }>>;
 
 export class MiseEnvironmentProvider implements EnvironmentProvider {
   // Pool id ("tool@exactVersion") -> its bin directories. Populated by the
@@ -178,6 +192,20 @@ export class MiseEnvironmentProvider implements EnvironmentProvider {
     await mkdir(trackedDir, { recursive: true });
     const queries = pool.map((p) => `${p.tool}@${p.version}`);
     await mise(["use", ...queries], trackedDir, poolDir);
+  }
+
+  async prune(ctx: PruneContext, options: { dryRun?: boolean } = {}): Promise<PruneResult> {
+    const raw = await mise(["ls", "--prunable", "--json"], ctx.cwd, ctx.poolDir);
+    const parsed: PrunableByTool = JSON.parse(raw);
+    const pruned = Object.entries(parsed).flatMap(([tool, versions]) =>
+      versions.map((v) => ({ tool, version: v.version })),
+    );
+
+    if (!options.dryRun && pruned.length > 0) {
+      await mise(["prune", "--yes"], ctx.cwd, ctx.poolDir);
+    }
+
+    return { pruned };
   }
 
   composeView(pool: PooledRuntime[], select: string[]): EnvironmentDelta {
