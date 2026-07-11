@@ -110,9 +110,9 @@ const lock = await materializer.materialize(manifest, { cwd: projectRoot });
 > **Pre-alpha, but the pipeline above is real end-to-end:** `MiseEnvironmentProvider`,
 > `OfficialMcpRegistry`, and `Materializer` are all implemented and
 > integration-tested against a real mise install and the live MCP registry —
-> see [`test/convergence.test.ts`](test/convergence.test.ts). What's still
-> missing is a CLI to invoke this as a standalone tool and an npm publish; see
-> [Status](#status).
+> see [`test/convergence.test.ts`](test/convergence.test.ts). A CLI
+> ([`bin/ribosome.ts`](bin/ribosome.ts)) exists and wraps this same pipeline;
+> what's still missing is the npm publish itself — see [Status](#status).
 
 ## How it works
 
@@ -154,14 +154,14 @@ repo, not here.
 | Ports (`EnvironmentProvider`, `McpRegistry`) | **Real** interfaces |
 | `MiseEnvironmentProvider` | **Real** — integration-tested against a real mise install |
 | `OfficialMcpRegistry` and the phased `Materializer` pipeline | **Real** — integration-tested against the live MCP registry, convergence-tested end-to-end (see [`test/convergence.test.ts`](test/convergence.test.ts)) |
-| CLI (`ribosome` binary) | **Not started** — no `bin/`, no argument parsing; library-only for now |
+| CLI (`ribosome` binary) | **Real** — [`bin/ribosome.ts`](bin/ribosome.ts): `resolve`/`prune` subcommands, tested (see [`test/cli.test.ts`](test/cli.test.ts)), compiles via `bun build --compile` |
+| Test-adequacy + review guardrails | **Real** — per-file coverage floor, an advisory mutation-score signal, and a required code-owner review gate on the merge path (see [Guardrails & Governance](https://github.com/medullaflow/ribosome/milestones)) |
 | npm package | **Unpublished** — `private: true`; the library builds and passes tests, but isn't installable yet |
 
-What's left is packaging, not resolution logic: a CLI entry point, binary
-compilation per platform, and the npm publish itself. See the
-[Distribution](https://github.com/medullaflow/ribosome/milestones) and
-[Guardrails & Governance](https://github.com/medullaflow/ribosome/milestones)
-milestones, and [ROADMAP.md](ROADMAP.md).
+What's left is packaging, not resolution logic: binary compilation per
+platform and the npm publish itself. See the
+[Distribution](https://github.com/medullaflow/ribosome/milestones) milestone
+and [ROADMAP.md](ROADMAP.md).
 
 ### What "alpha" means
 
@@ -170,15 +170,15 @@ three-platform packaging, signed installers, SBOM/provenance, and
 package-manager distribution are real but are post-alpha hardening, not a
 minimum bar. Pre-alpha becomes alpha here when:
 
-1. **A CLI exists** and can be invoked directly, not only embedded as a
-   library.
+1. ✅ **A CLI exists** and can be invoked directly, not only embedded as a
+   library — [`bin/ribosome.ts`](bin/ribosome.ts).
 2. **It's installable** by someone who isn't cloning this repo — either
    `npm install` (the library track) or a downloaded binary for at least one
    platform.
 3. **Install documentation exists** for whichever of the above ships first.
 4. **A released artifact has been verified to actually run**, via an
    automated install-and-run smoke test — not just "it compiled."
-5. **The test-adequacy and human-review guardrails are in place**
+5. ✅ **The test-adequacy and human-review guardrails are in place**
    ([Guardrails & Governance](https://github.com/medullaflow/ribosome/milestones)):
    a coverage floor plus a mutation-adequacy signal, and a required
    code-owner review gate on the merge path.
