@@ -1,0 +1,31 @@
+name: CodeQL
+
+# Static analysis beyond what Biome checks -- Biome is a linter/formatter
+# (style + a handful of correctness rules), not a taint/dataflow security
+# scanner. ribosome shells out to real processes (execFileSync against mise/
+# npx) and resolves file paths from external manifest data, a genuine
+# surface for this class of tool, not a hypothetical one. Free for this
+# public repo via GitHub's native code scanning -- no external account or
+# secret needed, same reasoning as gitleaks/dependency-review (D31/D32).
+#
+# No build step: CodeQL's javascript-typescript extractor parses source
+# directly, so this doesn't need `bun install` or `tsc` first.
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  schedule:
+    - cron: "0 7 * * 1" # weekly, Monday 07:00 UTC -- offset from audit.yml's 06:00
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v4
