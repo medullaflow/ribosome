@@ -32,6 +32,7 @@ const {
   LOCKFILE_FILENAME,
   writeLockfile,
 } = require("../dist/index.js");
+const { withMiseInstallLock } = require("./mise-install-lock");
 
 const OFFICIAL_URL = "https://registry.modelcontextprotocol.io";
 // Same real, known-published server official-registry.test.js and
@@ -65,8 +66,11 @@ const skipReason = !hasNetworkAccess()
   : !hasMise()
     ? "mise not found on PATH"
     : false;
-// Above the adapter's own 10s resolve timeout and a real `mise install`.
-const testOpts = { skip: skipReason, timeout: 30000 };
+// Generous: above the adapter's own 10s resolve timeout and a real
+// `mise install`, and withMiseInstallLock (see ./mise-install-lock.js) can
+// make this test queue behind a sibling test FILE's own cold install (a real
+// download + extract + attestation check, empirically ~50s each) first.
+const testOpts = { skip: skipReason, timeout: 180000 };
 
 test(
   "materialize(): a manifest referencing a real, live public MCP server resolves to a schema-valid lockfile with no test doubles anywhere in the path",
@@ -91,7 +95,7 @@ test(
       registries: [new OfficialMcpRegistry()],
     });
 
-    const lockfile = await materializer.materialize(manifest, { cwd });
+    const lockfile = await withMiseInstallLock(() => materializer.materialize(manifest, { cwd }));
 
     // Real registry adapter resolved the real server and the real
     // environment provider provisioned the real runtime it needs.
