@@ -163,6 +163,30 @@ compilation per platform, and the npm publish itself. See the
 [Guardrails & Governance](https://github.com/medullaflow/ribosome/milestones)
 milestones, and [ROADMAP.md](ROADMAP.md).
 
+### What "alpha" means
+
+Deliberately not gated on every item in the Distribution milestone — full
+three-platform packaging, signed installers, SBOM/provenance, and
+package-manager distribution are real but are post-alpha hardening, not a
+minimum bar. Pre-alpha becomes alpha here when:
+
+1. **A CLI exists** and can be invoked directly, not only embedded as a
+   library.
+2. **It's installable** by someone who isn't cloning this repo — either
+   `npm install` (the library track) or a downloaded binary for at least one
+   platform.
+3. **Install documentation exists** for whichever of the above ships first.
+4. **A released artifact has been verified to actually run**, via an
+   automated install-and-run smoke test — not just "it compiled."
+5. **The test-adequacy and human-review guardrails are in place**
+   ([Guardrails & Governance](https://github.com/medullaflow/ribosome/milestones)):
+   a coverage floor plus a mutation-adequacy signal, and a required
+   code-owner review gate on the merge path.
+
+Not a fixed issue checklist (that drifts the moment an issue's scope
+changes) — check the milestones above for what's currently done against
+this bar.
+
 ## Development
 
 ```bash
