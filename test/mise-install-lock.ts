@@ -34,25 +34,29 @@
 // the pre-fix (unisolated, unlocked) tests relied on -- just without the
 // concurrent-write race on mise's own symlink-rebuild step.
 
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 
 const LOCK_DIR = path.join(os.tmpdir(), "ribosome-mise-install.lock");
 const STALE_MS = 5 * 60 * 1000; // generous over any single real install
 const POLL_MS = 200;
 
-function sleep(ms) {
+function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function acquireLock() {
+function isErrnoException(err: unknown): err is NodeJS.ErrnoException {
+  return err instanceof Error && "code" in err;
+}
+
+async function acquireLock(): Promise<void> {
   for (;;) {
     try {
       fs.mkdirSync(LOCK_DIR);
       return;
     } catch (err) {
-      if (err.code !== "EEXIST") throw err;
+      if (!isErrnoException(err) || err.code !== "EEXIST") throw err;
       // A crashed holder (killed test run, etc.) could leave the lock dir
       // behind forever -- reclaim it once it's older than any real install
       // could plausibly take, rather than hanging every future run.
@@ -71,12 +75,12 @@ async function acquireLock() {
   }
 }
 
-function releaseLock() {
+function releaseLock(): void {
   fs.rmSync(LOCK_DIR, { recursive: true, force: true });
 }
 
 /** Runs `fn` with the cross-process mise-install lock held; releases it even if `fn` throws/rejects. */
-async function withMiseInstallLock(fn) {
+export async function withMiseInstallLock<T>(fn: () => T | Promise<T>): Promise<T> {
   await acquireLock();
   try {
     return await fn();
@@ -84,5 +88,3 @@ async function withMiseInstallLock(fn) {
     releaseLock();
   }
 }
-
-module.exports = { withMiseInstallLock };

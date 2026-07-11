@@ -111,7 +111,9 @@ export class Materializer implements DependencyMaterializer {
     );
     const resolved: { id: string; ref: ResolvedMcpServerRef }[] = [];
     settled.forEach((result, i) => {
-      const [id] = entries[i];
+      // entries[i] always exists: settled is entries.map(...), so the two
+      // arrays are index-aligned by construction.
+      const [id] = entries[i] as (typeof entries)[number];
       if (result.status === "fulfilled") {
         resolved.push({ id, ref: result.value });
       } else {
@@ -162,8 +164,8 @@ export class Materializer implements DependencyMaterializer {
     try {
       pool = await this.deps.environmentProvider.materialize(poolRequirements, {
         cwd: options.cwd,
-        refresh: options.refresh,
-        poolDir,
+        ...(options.refresh !== undefined && { refresh: options.refresh }),
+        ...(poolDir !== undefined && { poolDir }),
       });
     } catch (err) {
       failures.push({
@@ -203,7 +205,7 @@ export class Materializer implements DependencyMaterializer {
             pathPrepend: projectView.pathPrepend,
             envVars: { ...projectView.envVars, ...(ref.process.env ?? {}) },
           },
-          permissions: ref.permissions,
+          ...(ref.permissions !== undefined && { permissions: ref.permissions }),
         };
       }
       const uses = poolIdsForTools((requirementsById.get(id) ?? []).map((r) => r.tool));
@@ -213,7 +215,7 @@ export class Materializer implements DependencyMaterializer {
         uses,
         launch: deriveLaunch(ref.server),
         environment,
-        permissions: ref.permissions,
+        ...(ref.permissions !== undefined && { permissions: ref.permissions }),
       };
     });
 

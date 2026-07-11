@@ -12,19 +12,19 @@
 // directory per test, not the real src/ -- checkArchitecture() is generic
 // over its root argument specifically so this is possible.
 
-const { test } = require("node:test");
-const assert = require("node:assert/strict");
-const { mkdtempSync, mkdirSync, writeFileSync } = require("node:fs");
-const { tmpdir } = require("node:os");
-const { join } = require("node:path");
+import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { test } from "node:test";
 
-const {
+import {
   checkArchitecture,
   checkImportGraph,
   checkNoLocalSchema,
-} = require("../scripts/architecture-rules");
+} from "../scripts/architecture-rules";
 
-function fixture(files) {
+function fixture(files: Record<string, string>): string {
   const root = mkdtempSync(join(tmpdir(), "ribosome-arch-fixture-"));
   for (const [relPath, content] of Object.entries(files)) {
     const full = join(root, relPath);
@@ -53,8 +53,8 @@ test("rule 1: ports/ importing from adapters/ is flagged", () => {
   });
   const violations = checkImportGraph(root);
   assert.equal(violations.length, 1);
-  assert.equal(violations[0].rule, "PORTS_NO_ADAPTERS");
-  assert.equal(violations[0].file, "ports/environment-provider.ts");
+  assert.equal(violations[0]?.rule, "PORTS_NO_ADAPTERS");
+  assert.equal(violations[0]?.file, "ports/environment-provider.ts");
 });
 
 test("rule 1: one adapter importing a sibling adapter is flagged", () => {
@@ -64,7 +64,7 @@ test("rule 1: one adapter importing a sibling adapter is flagged", () => {
   });
   const violations = checkImportGraph(root);
   assert.equal(violations.length, 1);
-  assert.equal(violations[0].rule, "ADAPTERS_NO_SIBLINGS");
+  assert.equal(violations[0]?.rule, "ADAPTERS_NO_SIBLINGS");
 });
 
 test("rule 2: the orchestrator importing adapters/ directly is flagged", () => {
@@ -74,7 +74,7 @@ test("rule 2: the orchestrator importing adapters/ directly is flagged", () => {
   });
   const violations = checkImportGraph(root);
   assert.equal(violations.length, 1);
-  assert.equal(violations[0].rule, "ORCHESTRATOR_NO_ADAPTERS");
+  assert.equal(violations[0]?.rule, "ORCHESTRATOR_NO_ADAPTERS");
 });
 
 test("index.ts (the composition root) is exempt -- wiring adapters there is not a violation", () => {
@@ -93,7 +93,7 @@ test("rule 3: a stray *.schema.json file anywhere in the repo is flagged", () =>
   });
   const violations = checkNoLocalSchema(root);
   assert.equal(violations.length, 1);
-  assert.equal(violations[0].rule, "NO_LOCAL_SCHEMA");
+  assert.equal(violations[0]?.rule, "NO_LOCAL_SCHEMA");
 });
 
 test("checkArchitecture() combines the import-graph and schema-file checks", () => {
@@ -103,6 +103,6 @@ test("checkArchitecture() combines the import-graph and schema-file checks", () 
     "stray.schema.json": `{}`,
   });
   const violations = checkArchitecture(join(root, "src"), root);
-  const rules = violations.map((v) => v.rule).sort();
+  const rules = violations.map((v: { rule: string }) => v.rule).sort();
   assert.deepEqual(rules, ["NO_LOCAL_SCHEMA", "PORTS_NO_ADAPTERS"]);
 });

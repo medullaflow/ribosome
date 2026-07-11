@@ -146,7 +146,7 @@ enforced by the **architecture fitness function**
 [#29](https://github.com/medullaflow/ribosome/issues/29)), which walks the
 real import graph and fails the build on a forbidden edge; rule 4 is a
 data-shape property, not an import-graph one, so it's covered instead by a
-behavioral test (`test/materializer.test.js`) plus the standard's own JSON
+behavioral test (`test/materializer.test.ts`) plus the standard's own JSON
 Schema:
 
 1. **`ports/` imports nothing from `adapters/`.** Adapters import ports + the
@@ -273,9 +273,9 @@ views, and lockfile assembly — are `Materializer.materialize()`
 ([#25](https://github.com/medullaflow/ribosome/issues/25)) — is the one place
 in the whole pipeline that touches the filesystem: `materialize()` returns
 the lockfile as a value and never writes it itself, so the resolution path
-stays testable with zero filesystem access (`test/materializer.test.js`),
+stays testable with zero filesystem access (`test/materializer.test.ts`),
 and `writeLockfile()` is tested separately, against a real temp directory
-(`test/lockfile-writer.test.js`).
+(`test/lockfile-writer.test.ts`).
 
 Resolution failures are **aggregated**: either everything resolves, or
 `ResolutionError` lists every failure at once, so a caller reports them
@@ -355,36 +355,37 @@ determinism from the first resolve.
 | D24 | Prove multi-source dispatch + auth end-to-end using a local throwaway HTTP server as the "independent authenticated registry" leg, not a real third-party subregistry (PulseMCP) | [#40](https://github.com/medullaflow/ribosome/issues/40) originally targeted PulseMCP specifically, since it was the concrete real-world evidence D22's `auth` design was grounded in. But requiring an actual PulseMCP account/API key to land this test would make the milestone depend on a third party's signup flow for something the test doesn't actually need proof of: what matters architecturally is that `resolveMcpServer()` dispatches correctly across two differently-configured `registries.sources` entries *of the same adapter type* in one run, with the auth path (already unit-tested in isolation for [#39](https://github.com/medullaflow/ribosome/issues/39)) exercised as part of that same integrated flow — not that PulseMCP specifically is reachable. A local `node:http` server requiring an `Authorization` header, resolved alongside a real call to the live official registry through the same shared `OfficialMcpRegistry` instance, proves exactly that, with no external dependency. Revisiting against a real external subregistry stays a valid, separate follow-up if a concrete need for that specific proof arises later — this isn't a rejection of doing it for real, just a rejection of blocking this milestone on a signup flow for a proof the local stand-in already covers. |
 | D25 | `Materializer.materialize()`: `process` entries reuse the *project's own* pool view (plus their own literal `env` overrides) rather than deriving any requirements of their own; `activationHook` is stripped when assembling `Environment` values for the lockfile | A `process` entry structurally carries no `packages` to derive a runtime family from (it is a raw `{command, args, env}` launch, per `ProcessServer`'s own doc comment, "not runtime-resolved by ribosome") — so there is nothing for step 3's registry-derived requirement to hang off of. But the schema comment also says it "runs inside the project runtime pool's environment," so its `ResolvedMcpServer.environment`/`uses` are the project's own composed view, not an empty one — a `process` entry gets whatever the project's declared `runtimes` provisioned, plus its own literal `env` layered on top, never a fresh derivation. Separately: `EnvironmentDelta` extends the lockfile's `Environment` with an optional `activationHook` that is deliberately absent from the lockfile schema (see "The activation-hook boundary" below) — `Materializer` explicitly copies only `pathPrepend`/`envVars` out of every `composeView()` result before it reaches `RibosomeLockfile`, rather than relying on structural assignability to silently pass the extra field through unnoticed. Failure handling: `materialize()` runs descriptor resolution (step 2, `Promise.allSettled` over every manifest entry) and, regardless of whether any of those failed, still attempts runtime provisioning (step 4) before deciding whether to throw — so a registry failure and an environment-provisioning failure discovered in the same run are reported together in one `ResolutionError`, not in two separate fix-one-rerun passes. This is a deliberate partial step toward [#24](https://github.com/medullaflow/ribosome/issues/24)'s full aggregate-all-failures model (e.g. it does not yet decompose a single aggregated `EnvironmentProvider.materialize()` rejection into one `ResolutionFailure` per failed tool — the port's contract only gives one combined message today), not a claim that #24 is already done. |
 | D26 | `resolveMcpServer()`'s `inline` branch validates `entry.server` with the non-throwing `checkMcpServerJson()` and folds a failure into the same aggregated-failure path as every other resolution error, rather than trusting the manifest's own TypeScript typing | [#24](https://github.com/medullaflow/ribosome/issues/24)'s stated scope is aggregating failures at "the descriptor-resolution level (registry lookups, inline validation)" — registry-lookup aggregation fell out of [#23](https://github.com/medullaflow/ribosome/issues/23)'s `Promise.allSettled`-based pipeline for free, but inline validation didn't exist at all: the `inline` branch just unwrapped `entry.server` and trusted it. That trust only holds once something has run the manifest through `validateManifest()`/`checkManifest()` (pipeline step 1) — and nothing in this repo does that yet (no CLI entry point exists, see the open **Distribution** milestone), so a hand-built or agent-generated manifest with a malformed inline `server.json` would previously sail through resolution and fail confusingly deep inside `runtime-mapping.ts`/`launch-mapping.ts` instead. `checkMcpServerJson()` is the same non-throwing check `OfficialMcpRegistry`/`FileMcpRegistry` already run on registry responses (see [D23](#design-decisions)) — reusing it here means one validation code path for "does this look like a server.json," not a second one invented for the inline case. The failure surfaces as a plain thrown `Error` (not a new port-level error class): `resolveMcpServer()`'s own pre-existing "no registry declared"/"no adapter found" checks already throw plain `Error`s caught by `Materializer`'s `Promise.allSettled` and turned into a `kind: "mcpServer"` `ResolutionFailure` — this is that same orchestration-level failure category, not the `McpRegistry` port's own typed-failure contract (`InvalidServerDescriptorError` requires a `RegistryQuery`, which an inline entry never has). |
-| D27 | `writeLockfile()` lives in `orchestrator/lockfile-writer.ts`, not behind a new port/adapter pair | The lockfile has exactly one format and one target (`<cwd>/ribosome.lock.json`, the standard's own declarative JSON shape) — there is no second backend to swap in the way `EnvironmentProvider` genuinely varies (mise vs. nix vs. asdf) or `McpRegistry` genuinely varies (protocol per source). Introducing a port for a single, fixed implementation would be an abstraction with no second consumer, which the project's own stated style avoids. It still satisfies [#25](https://github.com/medullaflow/ribosome/issues/25)'s actual requirement — the resolution path testable with zero filesystem access — because `Materializer.materialize()` already returned the lockfile as a plain value before this issue (see [D25](#design-decisions)); `writeLockfile()` is the thin, separately-testable function that was still missing, tested against a real temp directory (`test/lockfile-writer.test.js`), mirroring `file-registry.test.js`'s own "no mocking `node:fs`" precedent. |
-| D28 | The cross-milestone convergence check (`test/convergence.test.js`) also exercises the real `MiseEnvironmentProvider`, not just the real registry adapter + orchestrator the issue names | [#26](https://github.com/medullaflow/ribosome/issues/26) frames the checkpoint as "Registry Adapter + Orchestrator" converging, since those were the two milestones built in parallel against their own test doubles. But `Materializer.materialize()` cannot run at all without *some* `EnvironmentProvider` — the phased pipeline calls `materialize()`/`composeView()` unconditionally once any `server-json` entry derives a runtime requirement — so "no test doubles anywhere in the path" (the issue's own acceptance criterion) necessarily includes it too; using a fake environment provider here would leave exactly the kind of untested seam this checkpoint exists to close. Reuses the same real, known-published server (`com.pulsemcp/remote-filesystem@0.1.2`) already verified in `official-registry.test.js`/`launch-mapping.test.js`, so the fixture's realness isn't newly asserted here, only its end-to-end composition is. The lockfile is validated with the standard's own real `validateLockfile()` (not just this repo's TypeScript types), then written and re-read through a real temp directory and validated again — closing all seven pipeline steps in one run, the full scope the **Orchestrator Pipeline** milestone set out to prove. |
+| D27 | `writeLockfile()` lives in `orchestrator/lockfile-writer.ts`, not behind a new port/adapter pair | The lockfile has exactly one format and one target (`<cwd>/ribosome.lock.json`, the standard's own declarative JSON shape) — there is no second backend to swap in the way `EnvironmentProvider` genuinely varies (mise vs. nix vs. asdf) or `McpRegistry` genuinely varies (protocol per source). Introducing a port for a single, fixed implementation would be an abstraction with no second consumer, which the project's own stated style avoids. It still satisfies [#25](https://github.com/medullaflow/ribosome/issues/25)'s actual requirement — the resolution path testable with zero filesystem access — because `Materializer.materialize()` already returned the lockfile as a plain value before this issue (see [D25](#design-decisions)); `writeLockfile()` is the thin, separately-testable function that was still missing, tested against a real temp directory (`test/lockfile-writer.test.ts`), mirroring `file-registry.test.ts`'s own "no mocking `node:fs`" precedent. |
+| D28 | The cross-milestone convergence check (`test/convergence.test.ts`) also exercises the real `MiseEnvironmentProvider`, not just the real registry adapter + orchestrator the issue names | [#26](https://github.com/medullaflow/ribosome/issues/26) frames the checkpoint as "Registry Adapter + Orchestrator" converging, since those were the two milestones built in parallel against their own test doubles. But `Materializer.materialize()` cannot run at all without *some* `EnvironmentProvider` — the phased pipeline calls `materialize()`/`composeView()` unconditionally once any `server-json` entry derives a runtime requirement — so "no test doubles anywhere in the path" (the issue's own acceptance criterion) necessarily includes it too; using a fake environment provider here would leave exactly the kind of untested seam this checkpoint exists to close. Reuses the same real, known-published server (`com.pulsemcp/remote-filesystem@0.1.2`) already verified in `official-registry.test.ts`/`launch-mapping.test.ts`, so the fixture's realness isn't newly asserted here, only its end-to-end composition is. The lockfile is validated with the standard's own real `validateLockfile()` (not just this repo's TypeScript types), then written and re-read through a real temp directory and validated again — closing all seven pipeline steps in one run, the full scope the **Orchestrator Pipeline** milestone set out to prove. |
 | D29 | Runtime pool location (`pool.dir` → `MISE_DATA_DIR`) and lifecycle (tracking + `prune()`) are built entirely on mise's own existing mechanisms, not new ribosome-owned state — verified empirically at every step, including two wrong initial assumptions caught before landing | Three issues shipped together under the **Runtime Pool Lifecycle** milestone ([#21](https://github.com/medullaflow/ribosome-schema/issues/21) schema field, [#59](https://github.com/medullaflow/ribosome/issues/59) tracking, [#60](https://github.com/medullaflow/ribosome/issues/60) pool location, [#61](https://github.com/medullaflow/ribosome/issues/61) prune). The motivating question was whether ribosome should maintain its own cross-project "consumer registry" so unused pooled runtimes could be identified for cleanup — rejected: mise already has exactly this (`~/.local/state/mise/tracked-configs`, read by `mise prune`/`mise ls --prunable`), verified reference-counted correctly across independent, unrelated project directories (removing one project's reference while another remains correctly keeps the shared install; removing the last correctly frees it), including handling a deleted project directory for free — a bespoke registry would be strictly worse (new mutable state to keep in sync, a staleness/liveness problem `mise` doesn't have, and, for a future nix adapter, direct redundancy with nix's own more mature GC-roots mechanism). But `MiseEnvironmentProvider` turned out not to participate in mise's own tracking at all: a bare `mise install` (its pre-#59 behavior) is immediately visible to `mise ls --prunable`, so an unrelated `mise prune` run anywhere else on the same machine could silently delete a runtime a ribosome-managed project still depended on — a live gap in shipped code, found while investigating the original GC question, not a hypothetical. Fixing it took two rounds of empirical correction, not one: the first attempt (`mise use --path <arbitrary file>`) writes a perfectly correct tools file but was verified to NOT register a tracked-configs entry at all — silently no different from a bare `mise install` — caught only by re-verifying an earlier test result rather than trusting it at a glance. Tracking only registers through mise's own *default* filename discovery, so the fix runs `mise use` with its subprocess `cwd` set to a dedicated `<projectRoot>/.ribosome/` subdirectory instead of pointing `--path` at an arbitrary location. A second, independent discovery surfaced while testing [#61](https://github.com/medullaflow/ribosome/issues/61): tracked-configs protection is **not scoped per `MISE_DATA_DIR`** — a tracked `tool@version` is protected everywhere that exact version happens to be installed, across every pool on the machine, not just within the pool that tracked it (verified: track a version in the default pool, install the identical exact version untracked in a wholly separate isolated pool, and that isolated pool's own `ls --prunable` reports nothing). Harmless for correctness (it only ever over-protects, matching the same "conservative bias, never less protected" posture already accepted for tracking's own add-only limitation — `mise use` has no "replace with exactly this set" mode either, verified, so a tool a project stops depending on stays tracked indefinitely rather than becoming immediately collectible), but it shaped the pool-location work directly: `poolDir` (from `pool.dir`) had to be threaded through every subprocess call *including* the tracking one, and the adapter's own `binPaths` cache — previously safe to skip-on-repeat since one global store meant "same id" always meant "same physical path" — had to drop that optimization entirely once a configurable pool made that assumption false; always re-querying the fast, local, side-effect-free `bin-paths` call removes the staleness risk at negligible cost rather than trying to invalidate a cache correctly. `prune()` itself is optional on the port and deliberately never called by `materialize()` — pruning deletes installed tool versions from disk, so it must stay an explicit, separate, caller-invoked action, surfaced as `ribosome prune`/`--dry-run`, not a side effect of an unrelated resolve. |
+| D30 | The widened, tests-inclusive typecheck (`tsconfig.check.json`, `bun run typecheck:test`) is a second, `noEmit`-only tsconfig, not a widened `include` on the base `tsconfig.json` | The base config's `rootDir: "src"` + `outDir: "dist"` are load-bearing for the real build (`bun run build` is what npm consumers and `bin/ribosome.ts`'s `dist/index.js` import actually get) — widening its own `include` to `bin/**/*` and `test/**/*` would either break that rootDir constraint outright or start emitting compiled test files into `dist/`, neither acceptable. A second config, `extends`-ing the base one so the stricter flags can't silently drift between the two, with `noEmit: true` and `rootDir: "."`, checks the same tree the base config can't reach ([#30](https://github.com/medullaflow/ribosome/issues/30) named `src/` + tests; `bin/ribosome.ts` — the actual shipped CLI entry point — turned out to have *zero* compiler coverage before this at all, only `bun build`'s own transpilation, which strips types without validating them, so it's included too, an extension of the issue's own intent rather than a departure from it). `scripts/architecture-rules.js` stays plain JS (`allowJs`, not `checkJs`, and only that one file explicitly `include`d) — it's dev/CI tooling, not shipped source, so holding it to the same bar as `src/`/`bin/`/`test/` would be scope creep the issue never asked for; `allowJs` alone is enough to let the one test file that imports from it (`architecture-fitness.test.ts`) typecheck without an `any`-shaped import. |
 
 ## Status
 
 - **Real, here:** the ports; the wiring that consumes `@medullaflow/ribosome-schema`
-  as a published npm dependency, `^0.1.8` (verified by `test/schema-dependency.test.js`);
+  as a published npm dependency, `^0.1.8` (verified by `test/schema-dependency.test.ts`);
   `MiseEnvironmentProvider` — `materialize()`/`composeView()`, integration-tested
-  against a real mise install, see `test/mise-environment-provider.test.js`
+  against a real mise install, see `test/mise-environment-provider.test.ts`
   (**Environment Provider** milestone, closed); `OfficialMcpRegistry.resolve()`
   plus `resolveMcpServer()`'s three-source normalization — both integration-tested
-  against the real live registry, see `test/official-registry.test.js` and
-  `test/resolve-mcp-server.test.js` (**MCP Registry Adapter** milestone, closed);
+  against the real live registry, see `test/official-registry.test.ts` and
+  `test/resolve-mcp-server.test.ts` (**MCP Registry Adapter** milestone, closed);
   and `deriveLaunch()` ([#38](https://github.com/medullaflow/ribosome/issues/38),
   see [D21](#design-decisions)) — tested against real npm, pypi, and remote-only
-  registry entries, see `test/launch-mapping.test.js`.
+  registry entries, see `test/launch-mapping.test.ts`.
 - **Real, here:** `OfficialMcpRegistry.resolve()` sending `RegistrySource.auth`
   headers, value read from the named environment variable, failing via
   `MissingRegistryCredentialError` before any request when one is unset
   ([#39](https://github.com/medullaflow/ribosome/issues/39), see
   [D22](#design-decisions)) — tested against a real local HTTP server, see
-  `test/official-registry.test.js`; `FileMcpRegistry`, an offline/local
+  `test/official-registry.test.ts`; `FileMcpRegistry`, an offline/local
   registry backed by a file on disk ([#41](https://github.com/medullaflow/ribosome/issues/41),
   see [D23](#design-decisions)) — tested against a real fixture file, see
-  `test/file-registry.test.js`; and multi-source dispatch — `resolveMcpServer()`
+  `test/file-registry.test.ts`; and multi-source dispatch — `resolveMcpServer()`
   resolving from two distinct `registries.sources` entries (the live official
   registry plus a locally-run authenticated stand-in) in one run
   ([#40](https://github.com/medullaflow/ribosome/issues/40), see
-  [D24](#design-decisions)) — see `test/multi-registry.test.js`.
+  [D24](#design-decisions)) — see `test/multi-registry.test.ts`.
   **Multi-Registry Support** milestone now fully closed.
 - **Real, here:** `Materializer.materialize()` — the phased pipeline itself:
   descriptor resolution, per-server runtime-requirement derivation, merge +
@@ -395,7 +396,7 @@ determinism from the first resolve.
   runtime-provisioning phases
   ([#23](https://github.com/medullaflow/ribosome/issues/23), see
   [D25](#design-decisions)) — covered entirely against fake port
-  implementations, see `test/materializer.test.js`, per this milestone's own
+  implementations, see `test/materializer.test.ts`, per this milestone's own
   acceptance criterion that the manifest-to-lockfile path not depend on a real
   registry or environment provider being available in the test run.
 - **Real, here:** resolution failures aggregated at the descriptor level —
@@ -403,22 +404,22 @@ determinism from the first resolve.
   validation, and a runtime-provisioning failure are all reported together
   in one `ResolutionError` in a single attempt, each tagged with the manifest
   entry it came from ([#24](https://github.com/medullaflow/ribosome/issues/24),
-  see [D26](#design-decisions)) — see `test/materializer.test.js` and
-  `test/resolve-mcp-server.test.js`.
+  see [D26](#design-decisions)) — see `test/materializer.test.ts` and
+  `test/resolve-mcp-server.test.ts`.
 - **Real, here:** `writeLockfile()`, the thin effects layer that persists a
   resolved lockfile to `<cwd>/ribosome.lock.json`
   ([#25](https://github.com/medullaflow/ribosome/issues/25), see
   [D27](#design-decisions)) — tested against a real temp directory, see
-  `test/lockfile-writer.test.js`; `Materializer.materialize()` itself
+  `test/lockfile-writer.test.ts`; `Materializer.materialize()` itself
   remains exercised with zero filesystem access, see
-  `test/materializer.test.js`.
+  `test/materializer.test.ts`.
 - **Real, here:** the cross-milestone convergence check — a manifest
   referencing a real, live public MCP server resolves to a schema-valid
   lockfile through the real registry adapter, the real orchestrator, and the
   real environment provider together, written to and re-read from a real
   temp directory, no test doubles anywhere in the path
   ([#26](https://github.com/medullaflow/ribosome/issues/26), see
-  [D28](#design-decisions)) — see `test/convergence.test.js`.
+  [D28](#design-decisions)) — see `test/convergence.test.ts`.
   **Orchestrator Pipeline** milestone now fully closed.
 - **Real, here:** a project can pin its runtime pool to a non-default
   directory via manifest `pool.dir`
@@ -434,8 +435,20 @@ determinism from the first resolve.
   backend-native mechanism, exposed as an optional `EnvironmentProvider.prune()`
   and `ribosome prune [--dry-run]`
   ([#61](https://github.com/medullaflow/ribosome/issues/61)) — see
-  [D29](#design-decisions), `test/mise-environment-provider.test.js`, and
-  `test/cli.test.js`. **Runtime Pool Lifecycle** milestone now fully closed.
+  [D29](#design-decisions), `test/mise-environment-provider.test.ts`, and
+  `test/cli.test.ts`. **Runtime Pool Lifecycle** milestone now fully closed.
+- **Real, here:** `tsconfig.json` carries `noUncheckedIndexedAccess`,
+  `exactOptionalPropertyTypes`, `noImplicitOverride`,
+  `noFallthroughCasesInSwitch`, and `noImplicitReturns` on top of `strict`,
+  and the entire test suite is typechecked TypeScript, not plain `.js` —
+  `bun run typecheck:test` (CI-enforced) covers `src/` + `bin/` + `test/`
+  together, closing a gap where `bin/ribosome.ts`, the actual shipped CLI
+  entry point, had no compiler coverage at all before this
+  ([#30](https://github.com/medullaflow/ribosome/issues/30), see
+  [D30](#design-decisions)). One of four issues in the **Guardrails &
+  Governance** milestone; #31 (coverage/mutation-adequacy gates), #33
+  (supply-chain/secret hygiene), and #34 (governance policy for
+  human+agent contribution) remain open.
 - The schema repo's own status (schemas, validation, conformance corpus —
   all real and verified there) is that repo's own concern; see
   [its README](https://github.com/medullaflow/ribosome-schema#status).

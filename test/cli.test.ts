@@ -9,21 +9,37 @@
 // offline; only the final happy-path test needs mise on PATH (guarded like
 // mise-environment-provider.test.js and convergence.test.js).
 
-const { test } = require("node:test");
-const assert = require("node:assert/strict");
-const { execFileSync } = require("node:child_process");
-const { tmpdir } = require("node:os");
-const { mkdtempSync, writeFileSync, readFileSync } = require("node:fs");
-const { join } = require("node:path");
-const { pathToFileURL } = require("node:url");
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { test } from "node:test";
+import { pathToFileURL } from "node:url";
 
-const { withMiseInstallLock } = require("./mise-install-lock");
+import { withMiseInstallLock } from "./mise-install-lock";
 
 const REPO_ROOT = join(__dirname, "..");
 const BIN = join(REPO_ROOT, "bin", "ribosome.ts");
 const FIXTURE = join(__dirname, "fixtures", "local-registry.json");
 
-function runCli(args, cwd, env) {
+interface CliResult {
+  status: number;
+  stdout: string;
+  stderr: string;
+}
+
+interface ExecFileSyncError {
+  status: number;
+  stdout?: string;
+  stderr?: string;
+}
+
+function isExecFileSyncError(err: unknown): err is ExecFileSyncError {
+  return typeof err === "object" && err !== null && "status" in err;
+}
+
+function runCli(args: string[], cwd?: string, env?: Record<string, string>): CliResult {
   try {
     const stdout = execFileSync("bun", [BIN, ...args], {
       cwd: cwd ?? REPO_ROOT,
@@ -32,11 +48,12 @@ function runCli(args, cwd, env) {
     });
     return { status: 0, stdout, stderr: "" };
   } catch (err) {
+    if (!isExecFileSyncError(err)) throw err;
     return { status: err.status, stdout: err.stdout ?? "", stderr: err.stderr ?? "" };
   }
 }
 
-function hasMise() {
+function hasMise(): boolean {
   try {
     execFileSync("mise", ["--version"], { stdio: "ignore" });
     return true;
@@ -91,7 +108,7 @@ test("resolve against a schema-invalid manifest exits 1 (invalid manifest)", () 
 
 test("resolve end-to-end against a local file registry writes a valid lockfile and exits 0", {
   skip: !hasMise() ? "mise not found on PATH" : false,
-  // Generous: withMiseInstallLock (see ./mise-install-lock.js) can make this
+  // Generous: withMiseInstallLock (see ./mise-install-lock.ts) can make this
   // test queue behind a sibling test FILE's own cold install (a real
   // download + extract + attestation check, empirically ~50s each) first.
   timeout: 180000,

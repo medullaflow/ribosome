@@ -11,18 +11,19 @@
 // any third-party account/API key. See #40 for why this was descoped from a
 // real external subregistry.
 
-const { test } = require("node:test");
-const assert = require("node:assert/strict");
-const http = require("node:http");
-const { execFileSync } = require("node:child_process");
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import * as http from "node:http";
+import type { AddressInfo } from "node:net";
+import { test } from "node:test";
 
-const { OfficialMcpRegistry, resolveMcpServer } = require("../dist/index.js");
+import { OfficialMcpRegistry, resolveMcpServer } from "../dist/index.js";
 
 const OFFICIAL_URL = "https://registry.modelcontextprotocol.io";
 const KNOWN_SERVER = { name: "com.pulsemcp/remote-filesystem", version: "0.1.2" };
 const LOCAL_AUTH_TOKEN = "local-test-token-abc123";
 
-function hasNetworkAccess() {
+function hasNetworkAccess(): boolean {
   try {
     execFileSync("curl", ["-fsS", "--max-time", "5", `${OFFICIAL_URL}/v0.1/health`], {
       stdio: "ignore",
@@ -60,8 +61,8 @@ test(
         }),
       );
     });
-    await new Promise((resolve) => localServer.listen(0, "127.0.0.1", resolve));
-    const { port } = localServer.address();
+    await new Promise<void>((resolve) => localServer.listen(0, "127.0.0.1", resolve));
+    const port = (localServer.address() as AddressInfo).port;
 
     process.env.RIBOSOME_TEST_LOCAL_AUTH_TOKEN = `Bearer ${LOCAL_AUTH_TOKEN}`;
     try {
@@ -97,8 +98,11 @@ test(
       ]);
 
       assert.equal(official.kind, "server-json");
-      assert.equal(official.server.name, KNOWN_SERVER.name);
       assert.equal(local.kind, "server-json");
+      if (official.kind !== "server-json" || local.kind !== "server-json") {
+        throw new Error("unreachable: both asserted server-json above");
+      }
+      assert.equal(official.server.name, KNOWN_SERVER.name);
       assert.equal(local.server.name, "com.example/local-auth-test");
     } finally {
       delete process.env.RIBOSOME_TEST_LOCAL_AUTH_TOKEN;

@@ -93,8 +93,16 @@ export async function resolveMcpServer(
     case "registry": {
       const { source } = findRegistrySource(entry.registry, ctx);
       const adapter = findAdapter(source, ctx);
-      const server = await adapter.resolve({ name: entry.name, version: entry.version, source });
-      return { kind: "server-json", server, permissions: entry.permissions };
+      const server = await adapter.resolve({
+        name: entry.name,
+        ...(entry.version !== undefined && { version: entry.version }),
+        source,
+      });
+      return {
+        kind: "server-json",
+        server,
+        ...(entry.permissions !== undefined && { permissions: entry.permissions }),
+      };
     }
     case "inline": {
       const { valid, errors } = checkMcpServerJson(entry.server);
@@ -103,9 +111,17 @@ export async function resolveMcpServer(
           `inline server.json is not a valid McpServerJson:\n${errors.map((e) => `  - ${e}`).join("\n")}`,
         );
       }
-      return { kind: "server-json", server: entry.server, permissions: entry.permissions };
+      return {
+        kind: "server-json",
+        server: entry.server,
+        ...(entry.permissions !== undefined && { permissions: entry.permissions }),
+      };
     }
     case "process":
-      return { kind: "process", process: entry, permissions: entry.permissions };
+      return {
+        kind: "process",
+        process: entry,
+        ...(entry.permissions !== undefined && { permissions: entry.permissions }),
+      };
   }
 }

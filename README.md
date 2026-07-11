@@ -110,7 +110,7 @@ const lock = await materializer.materialize(manifest, { cwd: projectRoot });
 > **Pre-alpha, but the pipeline above is real end-to-end:** `MiseEnvironmentProvider`,
 > `OfficialMcpRegistry`, and `Materializer` are all implemented and
 > integration-tested against a real mise install and the live MCP registry —
-> see [`test/convergence.test.js`](test/convergence.test.js). What's still
+> see [`test/convergence.test.ts`](test/convergence.test.ts). What's still
 > missing is a CLI to invoke this as a standalone tool and an npm publish; see
 > [Status](#status).
 
@@ -153,7 +153,7 @@ repo, not here.
 | The standard (ribosome-schema): schemas, validation, conformance corpus | **Real** — tested, in its own repo |
 | Ports (`EnvironmentProvider`, `McpRegistry`) | **Real** interfaces |
 | `MiseEnvironmentProvider` | **Real** — integration-tested against a real mise install |
-| `OfficialMcpRegistry` and the phased `Materializer` pipeline | **Real** — integration-tested against the live MCP registry, convergence-tested end-to-end (see [`test/convergence.test.js`](test/convergence.test.js)) |
+| `OfficialMcpRegistry` and the phased `Materializer` pipeline | **Real** — integration-tested against the live MCP registry, convergence-tested end-to-end (see [`test/convergence.test.ts`](test/convergence.test.ts)) |
 | CLI (`ribosome` binary) | **Not started** — no `bin/`, no argument parsing; library-only for now |
 | npm package | **Unpublished** — `private: true`; the library builds and passes tests, but isn't installable yet |
 

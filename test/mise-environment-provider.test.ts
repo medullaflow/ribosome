@@ -11,17 +11,17 @@
 // acceptance criterion is checked against a real interpreter, not just a
 // trivial CLI.
 
-const { test } = require("node:test");
-const assert = require("node:assert/strict");
-const { execFileSync } = require("node:child_process");
-const { tmpdir } = require("node:os");
-const { mkdtempSync, readFileSync } = require("node:fs");
-const { join } = require("node:path");
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { test } from "node:test";
 
-const { MiseEnvironmentProvider } = require("../dist/index.js");
-const { withMiseInstallLock } = require("./mise-install-lock");
+import { MiseEnvironmentProvider } from "../dist/index.js";
+import { withMiseInstallLock } from "./mise-install-lock";
 
-function hasMise() {
+function hasMise(): boolean {
   try {
     execFileSync("mise", ["--version"], { stdio: "ignore" });
     return true;
@@ -31,7 +31,7 @@ function hasMise() {
 }
 
 const skip = !hasMise();
-// Generous: withMiseInstallLock (see ./mise-install-lock.js) can make this
+// Generous: withMiseInstallLock (see ./mise-install-lock.ts) can make this
 // test queue behind a sibling test FILE's own cold install (a real download +
 // extract + attestation check, empirically ~50s each) before it even starts
 // its own real work.
@@ -61,7 +61,11 @@ test("materialize() installs and dedups by exact resolved version", testOpts, as
 
   // "22" and "22.23" should both resolve to the SAME installed node -> one pool entry.
   assert.equal(nodeEntries.length, 1, "node@22 and node@22.23 should dedup to one pool entry");
-  assert.match(nodeEntries[0].version, /^22\./, "resolved node version should be a 22.x patch");
+  assert.match(
+    nodeEntries[0]?.version ?? "",
+    /^22\./,
+    "resolved node version should be a 22.x patch",
+  );
 });
 
 test(
@@ -75,6 +79,7 @@ test(
       provider.materialize([{ tool: "jq", versionSpec: "latest" }], { cwd }),
     );
     const jq = pool[0];
+    assert.ok(jq);
 
     // Adapter-internal, project-local tracked config (never the project
     // root -- see the adapter's own module comment).
@@ -101,6 +106,7 @@ test("composeView() produces a pathPrepend that resolves the right binary", test
     provider.materialize([{ tool: "node", versionSpec: "22" }], { cwd }),
   );
   const node = pool[0];
+  assert.ok(node);
 
   const view = provider.composeView(pool, [node.id]);
   assert.ok(view.pathPrepend.length > 0, "pathPrepend should not be empty");
@@ -142,7 +148,8 @@ test(
         ],
         { cwd },
       ),
-      (err) => {
+      (err: unknown) => {
+        assert.ok(err instanceof Error);
         assert.match(err.message, /totally-not-a-real-tool-xyz/);
         assert.match(err.message, /also-not-real-abc/);
         return true;
@@ -171,6 +178,7 @@ test(
     const [kept] = await withMiseInstallLock(() =>
       provider.materialize([{ tool: "jq", versionSpec: "1.6" }], { cwd, poolDir }),
     );
+    assert.ok(kept);
     assert.equal(kept.version, "1.6");
 
     // An untracked install of a DIFFERENT exact version of the same tool, in
@@ -235,6 +243,7 @@ test(
       provider.materialize([{ tool: "jq", versionSpec: "latest" }], { cwd, poolDir }),
     );
     const jq = pool[0];
+    assert.ok(jq);
 
     // The install must physically land under the custom pool dir, not
     // mise's own default global store.

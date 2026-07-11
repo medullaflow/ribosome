@@ -9,23 +9,24 @@
 // criterion). The adapter's own real-HTTP behavior is covered separately,
 // for real, in official-registry.test.js.
 
-const { test } = require("node:test");
-const assert = require("node:assert/strict");
-
-const { resolveMcpServer } = require("../dist/index.js");
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import type { McpServerJson } from "@medullaflow/ribosome-schema";
+import { resolveMcpServer } from "../dist/index.js";
+import type { McpRegistry, RegistryQuery } from "../src/ports/mcp-registry";
 
 /** A fake McpRegistry: resolves whatever server.json it was constructed with. */
-class FakeRegistry {
-  constructor(type, server) {
-    this.type = type;
-    this.server = server;
-  }
-  async resolve(_query) {
+class FakeRegistry implements McpRegistry {
+  constructor(
+    readonly type: string,
+    private readonly server: McpServerJson,
+  ) {}
+  async resolve(_query: RegistryQuery): Promise<McpServerJson> {
     return this.server;
   }
 }
 
-const FAKE_SERVER_JSON = {
+const FAKE_SERVER_JSON: McpServerJson = {
   name: "com.example/fake",
   description: "a fake server for testing resolveMcpServer's dispatch",
   version: "1.0.0",
@@ -50,15 +51,18 @@ test("inline source: unwraps .server, no adapter call needed", async () => {
 test("inline source: throws when the inline server.json fails schema validation", async () => {
   const malformed = { name: "com.example/malformed", description: "missing required version" };
   await assert.rejects(
-    resolveMcpServer({ source: "inline", server: malformed }, { adapters: [] }),
+    resolveMcpServer({ source: "inline", server: malformed as McpServerJson }, { adapters: [] }),
     /not a valid McpServerJson/,
   );
 });
 
 test("process source: passes through unresolved, no adapter call needed", async () => {
-  const processEntry = { source: "process", command: "npx", args: ["-y", "@foo/bar"] };
+  const processEntry = { source: "process" as const, command: "npx", args: ["-y", "@foo/bar"] };
   const result = await resolveMcpServer(processEntry, { adapters: [] });
-  assert.deepEqual(result, { kind: "process", process: processEntry, permissions: undefined });
+  // permissions is omitted (not present-as-undefined) when the manifest
+  // entry doesn't declare it -- exactOptionalPropertyTypes discipline, see
+  // resolve-mcp-server.ts's own conditional-spread construction.
+  assert.deepEqual(result, { kind: "process", process: processEntry });
 });
 
 test("registry source: resolves via the matching adapter (by RegistrySource.type)", async () => {
@@ -73,7 +77,6 @@ test("registry source: resolves via the matching adapter (by RegistrySource.type
   assert.deepEqual(result, {
     kind: "server-json",
     server: FAKE_SERVER_JSON,
-    permissions: undefined,
   });
 });
 
@@ -130,19 +133,19 @@ test("one pass: registry, inline, and process entries all resolve correctly toge
     adapters: [new FakeRegistry("mcp-registry-v1", FAKE_SERVER_JSON)],
   };
   const manifestServers = {
-    a: { source: "registry", name: "com.example/fake" },
-    b: { source: "inline", server: FAKE_SERVER_JSON },
-    c: { source: "process", command: "npx", args: ["-y", "@foo/bar"] },
+    a: { source: "registry" as const, name: "com.example/fake" },
+    b: { source: "inline" as const, server: FAKE_SERVER_JSON },
+    c: { source: "process" as const, command: "npx", args: ["-y", "@foo/bar"] },
   };
 
-  const resolved = {};
+  const resolved: Record<string, Awaited<ReturnType<typeof resolveMcpServer>>> = {};
   for (const [id, entry] of Object.entries(manifestServers)) {
     resolved[id] = await resolveMcpServer(entry, ctx);
   }
 
-  assert.equal(resolved.a.kind, "server-json");
-  assert.equal(resolved.b.kind, "server-json");
-  assert.equal(resolved.c.kind, "process");
-  assert.deepEqual(resolved.a.server, FAKE_SERVER_JSON);
-  assert.deepEqual(resolved.b.server, FAKE_SERVER_JSON);
+  assert.equal(resolved.a?.kind, "server-json");
+  assert.equal(resolved.b?.kind, "server-json");
+  assert.equal(resolved.c?.kind, "process");
+  assert.deepEqual(resolved.a && "server" in resolved.a && resolved.a.server, FAKE_SERVER_JSON);
+  assert.deepEqual(resolved.b && "server" in resolved.b && resolved.b.server, FAKE_SERVER_JSON);
 });

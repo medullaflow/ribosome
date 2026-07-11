@@ -22,18 +22,19 @@
 // body, so only the network target changes — the adapter's own fetch/parse/
 // validate code runs for real in every case.
 
-const { test } = require("node:test");
-const assert = require("node:assert/strict");
-const http = require("node:http");
-const { execFileSync } = require("node:child_process");
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import * as http from "node:http";
+import type { AddressInfo } from "node:net";
+import { test } from "node:test";
 
-const {
+import {
+  InvalidServerDescriptorError,
+  MissingRegistryCredentialError,
   OfficialMcpRegistry,
   RegistryUnreachableError,
   ServerNotFoundError,
-  InvalidServerDescriptorError,
-  MissingRegistryCredentialError,
-} = require("../dist/index.js");
+} from "../dist/index.js";
 
 const OFFICIAL_URL = "https://registry.modelcontextprotocol.io";
 // A real, known-published server (verified while designing this adapter) —
@@ -41,10 +42,10 @@ const OFFICIAL_URL = "https://registry.modelcontextprotocol.io";
 const KNOWN_SERVER = { name: "com.pulsemcp/remote-filesystem", version: "0.1.2" };
 
 function officialSource() {
-  return { type: "mcp-registry-v1", url: OFFICIAL_URL };
+  return { type: "mcp-registry-v1" as const, url: OFFICIAL_URL };
 }
 
-function hasNetworkAccess() {
+function hasNetworkAccess(): boolean {
   try {
     execFileSync("curl", ["-fsS", "--max-time", "5", `${OFFICIAL_URL}/v0.1/health`], {
       stdio: "ignore",
@@ -53,6 +54,10 @@ function hasNetworkAccess() {
   } catch {
     return false;
   }
+}
+
+function addressPort(server: http.Server): number {
+  return (server.address() as AddressInfo).port;
 }
 
 const skip = !hasNetworkAccess();
@@ -92,7 +97,7 @@ test("resolve() throws ServerNotFoundError for a name that doesn't exist", testO
       name: "io.ribosome-test/definitely-not-a-real-server-xyz",
       source: officialSource(),
     }),
-    (err) => {
+    (err: unknown) => {
       assert.ok(err instanceof ServerNotFoundError);
       return true;
     },
@@ -111,7 +116,7 @@ test("resolve() throws RegistryUnreachableError against a non-routable address",
       // network flakiness risk — this always times out.
       source: { type: "mcp-registry-v1", url: "http://192.0.2.1" },
     }),
-    (err) => {
+    (err: unknown) => {
       assert.ok(err instanceof RegistryUnreachableError);
       return true;
     },
@@ -123,8 +128,8 @@ test("resolve() throws InvalidServerDescriptorError on a malformed body", async 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ server: { name: "missing-required-fields" } }));
   });
-  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const { port } = server.address();
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = addressPort(server);
 
   try {
     await assert.rejects(
@@ -132,7 +137,7 @@ test("resolve() throws InvalidServerDescriptorError on a malformed body", async 
         name: "whatever",
         source: { type: "mcp-registry-v1", url: `http://127.0.0.1:${port}` },
       }),
-      (err) => {
+      (err: unknown) => {
         assert.ok(err instanceof InvalidServerDescriptorError);
         assert.ok(err.validationErrors.length > 0);
         return true;
@@ -148,8 +153,8 @@ test("resolve() throws InvalidServerDescriptorError on a non-JSON body", async (
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end("not json at all");
   });
-  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const { port } = server.address();
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = addressPort(server);
 
   try {
     await assert.rejects(
@@ -157,7 +162,7 @@ test("resolve() throws InvalidServerDescriptorError on a non-JSON body", async (
         name: "whatever",
         source: { type: "mcp-registry-v1", url: `http://127.0.0.1:${port}` },
       }),
-      (err) => {
+      (err: unknown) => {
         assert.ok(err instanceof InvalidServerDescriptorError);
         return true;
       },
@@ -168,7 +173,7 @@ test("resolve() throws InvalidServerDescriptorError on a non-JSON body", async (
 });
 
 test("resolve() sends every header declared in source.auth, value read from its named env var", async () => {
-  let receivedHeaders;
+  let receivedHeaders: http.IncomingHttpHeaders | undefined;
   const server = http.createServer((req, res) => {
     receivedHeaders = req.headers;
     res.writeHead(200, { "Content-Type": "application/json" });
@@ -176,8 +181,8 @@ test("resolve() sends every header declared in source.auth, value read from its 
       JSON.stringify({ server: { name: "com.example/x", description: "d", version: "1.0.0" } }),
     );
   });
-  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const { port } = server.address();
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = addressPort(server);
 
   process.env.RIBOSOME_TEST_API_KEY = "secret-key-123";
   process.env.RIBOSOME_TEST_TENANT_ID = "tenant-456";
@@ -193,8 +198,8 @@ test("resolve() sends every header declared in source.auth, value read from its 
         ],
       },
     });
-    assert.equal(receivedHeaders["x-api-key"], "secret-key-123");
-    assert.equal(receivedHeaders["x-tenant-id"], "tenant-456");
+    assert.equal(receivedHeaders?.["x-api-key"], "secret-key-123");
+    assert.equal(receivedHeaders?.["x-tenant-id"], "tenant-456");
   } finally {
     delete process.env.RIBOSOME_TEST_API_KEY;
     delete process.env.RIBOSOME_TEST_TENANT_ID;
@@ -209,8 +214,8 @@ test("resolve() throws MissingRegistryCredentialError, without making any reques
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ server: {} }));
   });
-  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const { port } = server.address();
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = addressPort(server);
 
   delete process.env.RIBOSOME_TEST_MISSING_VAR;
   try {
@@ -223,7 +228,7 @@ test("resolve() throws MissingRegistryCredentialError, without making any reques
           auth: [{ header: "Authorization", envVar: "RIBOSOME_TEST_MISSING_VAR" }],
         },
       }),
-      (err) => {
+      (err: unknown) => {
         assert.ok(err instanceof MissingRegistryCredentialError);
         assert.equal(err.header, "Authorization");
         assert.equal(err.envVar, "RIBOSOME_TEST_MISSING_VAR");
