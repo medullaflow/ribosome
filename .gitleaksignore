@@ -1,0 +1,10 @@
+# Confirmed false positives only -- verified locally (gitleaks without
+# --redact) before adding, never used to silence an unreviewed finding.
+#
+# "dependency/vulnerability" (a slash-joined compound word in ordinary
+# CONTRIBUTING.md prose) reads as high-entropy enough to match the
+# generic-api-key rule. Reworded going forward (e449611), but the finding
+# stays reachable via the original commit's history, which gitleaks scans
+# by design (see secret-scan.yml) -- so the fix has to be a reviewed
+# allowlist entry, not just a later rewording.
+d8acb64788c1b83793431e574a141957f9ac177e:CONTRIBUTING.md:generic-api-key:100
