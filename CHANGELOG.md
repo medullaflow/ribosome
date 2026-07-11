@@ -4,6 +4,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+### Added
+- **Mutation-adequacy signal** (`stryker.conf.json`, `scripts/mutation-test.sh`,
+  the `mutation-test` CI job) — closes the remaining half of #31 (coverage
+  floor landed separately, above). Stryker's generic `command` runner
+  (no third-party bun plugin — see
+  [`docs/ARCHITECTURE.md` D39](docs/ARCHITECTURE.md#design-decisions)) against
+  a fixed, fully-deterministic 4-file subset of the suite, run `inPlace` to
+  sidestep a TypeScript 7 Compiler API removal that crashes Stryker's default
+  sandboxed mode outright. Advisory (`continue-on-error: true`), not gating,
+  per the issue's own explicit allowance for a young suite. First real run:
+  63.49% mutation score (200 killed / 115 survived of 315 mutants); weakest
+  file `runtime-mapping.ts` at 44.83% — a concrete, visible pointer to where
+  today's tests execute code without actually pinning down its behavior.
+
 ### Fixed
 - **CI's `test` job retries once on a specific, confirmed upstream Bun bug**
   ([oven-sh/bun#23077](https://github.com/oven-sh/bun/issues/23077)):

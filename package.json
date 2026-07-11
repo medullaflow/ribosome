@@ -25,13 +25,15 @@
     "spdx:fix": "bun scripts/check-spdx-headers.js --fix",
     "check": "bun scripts/check.js",
     "check:staged": "bun scripts/check.js --staged",
-    "check:architecture": "bun scripts/check-architecture.js"
+    "check:architecture": "bun scripts/check-architecture.js",
+    "mutation-test": "scripts/mutation-test.sh"
   },
   "dependencies": {
     "@medullaflow/ribosome-schema": "^0.1.9"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.3",
+    "@stryker-mutator/core": "^9.6.1",
     "@types/node": "^26.1.1",
     "@typescript/typescript6": "^6.0.2",
     "typescript": "^7.0.2"
