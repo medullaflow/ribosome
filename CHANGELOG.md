@@ -65,6 +65,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   in `scripts/architecture-rules.js` — the 7.0 bump was never actually
   merged (`typescript` stays on `^5.7.0`; `dependabot.yml` now ignores
   major-version updates for it specifically, pending deliberate review).
+- **Deliberately migrated to TypeScript 7.0** (the native/Go compiler,
+  `typescript@^7.0.2`), completing the item deferred above. TypeScript 7.0
+  ships with no programmatic API at all (Microsoft's own words), so
+  `scripts/architecture-rules.js` — the one script that parses real source
+  via the classic Compiler API — now depends on `@typescript/typescript6`
+  (Microsoft's own sanctioned bridge package) instead of reaching for the
+  `typescript/unstable/ast` subpath, which exists but is explicitly not
+  meant to be built on yet. `dependabot.yml`'s major-version ignore rule for
+  `typescript` is removed now that the migration is done. See
+  [`docs/ARCHITECTURE.md` D34](docs/ARCHITECTURE.md#design-decisions).
 
 ### Changed
 - **Relicensed from `AGPL-3.0-or-later` to `MPL-2.0`.** ribosome is meant to

@@ -9,10 +9,22 @@
 // import, is enforced separately by the schema's own `additionalProperties`
 // and a behavioral test, see test/materializer.test.js).
 //
-// Uses the TypeScript compiler API (already a devDependency) to parse real
-// import/re-export statements rather than regexing source text -- robust
-// against the multi-line named-import lists this codebase actually uses
-// (see src/index.ts).
+// Uses the TypeScript compiler API to parse real import/re-export statements
+// rather than regexing source text -- robust against the multi-line named-
+// import lists this codebase actually uses (see src/index.ts).
+//
+// Imports @typescript/typescript6, not the main `typescript` devDependency:
+// TypeScript 7.0 (the native/Go compiler) ships with no programmatic API at
+// all -- Microsoft's own announcement is explicit about this ("TypeScript
+// 7.0 is here, it does not ship with an API. We expect TypeScript 7.1 to
+// ship with a new (and different) API"), and its `typescript/unstable/ast`
+// subpath, while it happens to still expose createSourceFile-equivalent
+// pieces, is explicitly unstable -- not covered by semver, could change in
+// a patch release. @typescript/typescript6 is Microsoft's own sanctioned
+// bridge for exactly this situation: it aliases the last classic-API
+// release (typescript@^6) so tools needing real parsing keep a stable
+// surface, while `typescript` itself stays on ^7.0.2 for tsc's own (much
+// faster) type-checking. See docs/ARCHITECTURE.md's design-decisions log.
 //
 // Deliberately generic over its root argument (not hardcoded to this repo's
 // own path): test/architecture-fitness.test.js points it at synthetic
@@ -20,7 +32,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const ts = require("typescript");
+const ts = require("@typescript/typescript6");
 
 const RULES = {
   PORTS_NO_ADAPTERS: 'Rule 1: "ports/" must not import from "adapters/"',
