@@ -5,6 +5,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 ## [Unreleased]
 
 ### Added
+- **`bun audit`** (`.github/workflows/audit.yml`, push/PR + weekly schedule)
+  and **CodeQL** (`.github/workflows/codeql.yml`, `javascript-typescript`) —
+  two of five supply-chain tools suggested in a Copilot code-review comment,
+  adopted after checking each against this repo's actual state rather than
+  the comment's own framing (which assumed this package is already published
+  to npm; it isn't yet — see #18). `bun audit` closes a real gap
+  `dependency-review-action` (D32) can't: a CVE disclosed *after* a
+  dependency is already merged into the lockfile. CodeQL catches a different
+  bug class than Biome (dataflow/taint analysis, relevant given real
+  `execFileSync` shell-outs and manifest-driven path resolution). SBOM
+  generation and dependency license-compliance scanning were declined for
+  now (one runtime dependency total — nothing meaningful to scan yet) and
+  tracked as follow-up issues instead. See
+  [`docs/ARCHITECTURE.md` D35](docs/ARCHITECTURE.md#design-decisions).
 - **Biome** as the linter + formatter (`biome.json`), enforced at the
   pre-commit hook (staged files) and in CI (whole tree) — the first of the
   [Guardrails & Governance](https://github.com/medullaflow/ribosome/milestones)

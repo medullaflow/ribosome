@@ -1,0 +1,28 @@
+name: Dependency Audit
+
+# Two complementary triggers, the same shape as dependency-review.yml +
+# dependabot.yml (D32): push/pull_request catches a newly-introduced
+# vulnerable dependency landing in a PR; the weekly schedule catches a CVE
+# disclosed LATER against a dependency already sitting in the lockfile --
+# something dependency-review-action can never see, since it only ever
+# diffs a PR's manifest against its base. `bun audit` is already part of
+# the toolchain in use here (no new tool to install or trust), and queries
+# the same npm/GitHub advisory data the rest of this repo's scanning
+# already relies on.
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC -- matches dependabot's own cadence
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      # high/critical only: this is a CI gate, not an inbox -- low/moderate
+      # advisories are still visible via `bun audit` locally or GitHub's own
+      # Dependency Graph UI, but shouldn't block a merge on their own.
+      - run: bun audit --audit-level=high
