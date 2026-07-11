@@ -26,6 +26,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   `bin/ribosome.ts` had no compiler coverage at all before this, only
   `bun build`'s own transpilation), so a type mismatch in a test now fails
   the build instead of only surfacing at `bun test` runtime.
+- **Supply-chain and secret hygiene on the merge path** — another
+  [Guardrails & Governance](https://github.com/medullaflow/ribosome/milestones)
+  item: `.github/workflows/secret-scan.yml` runs a version-pinned `gitleaks`
+  CLI directly (not `gitleaks/gitleaks-action`, which needs a paid license
+  for organization-owned repos) over the working tree and full commit
+  history on every push/PR; `.github/workflows/dependency-review.yml` runs
+  `actions/dependency-review-action` on every PR, surfacing a new/updated
+  dependency's advisory status as a check on that exact PR; `.github/
+  dependabot.yml` adds scheduled weekly update PRs for both the `npm`
+  ecosystem and GitHub Actions themselves. All three are free for this
+  public repo via GitHub's native Dependency Graph/Advisory Database — no
+  external account or secret to provision.
 
 ### Fixed
 - Turning on `exactOptionalPropertyTypes` surfaced (and this fixes) three
