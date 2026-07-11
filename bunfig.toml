@@ -1,0 +1,23 @@
+# Coverage floor for `bun test` (#31) -- exits non-zero when any file's
+# coverage drops below threshold, catching wholly- or mostly-untested code
+# landing on the merge path. Per-file, not just an aggregate average: a new
+# 0%-covered file would otherwise hide behind an already-high aggregate.
+#
+# 80%, not higher: set just below today's lowest real file (file-registry.js
+# at ~85% lines) rather than at today's average (~95%) -- a floor pinned
+# exactly to the current state fails on the next legitimate one-line
+# addition to that file. This is a floor against regression, not a target;
+# see docs/ARCHITECTURE.md for where mutation-testing (the harder, more
+# meaningful adequacy signal #31 also calls for) is tracked separately.
+#
+# coveragePathIgnorePatterns excludes test/ -- fixture/mock helper files
+# there (e.g. mise-install-lock.ts) are test infrastructure, not production
+# code; holding them to the same bar as src/ would gate on the wrong thing.
+#
+# Requires all three of lines/functions/statements to be set, not a subset
+# -- verified empirically (bun 1.3.14): coverageThreshold with only two keys
+# silently no-ops (exits 0 regardless of actual coverage).
+[test]
+coverage = true
+coverageThreshold = { lines = 0.80, functions = 0.80, statements = 0.80 }
+coveragePathIgnorePatterns = ["test/**"]
