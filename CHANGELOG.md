@@ -38,6 +38,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   exhausted-retries paths. See [D47](docs/ARCHITECTURE.md), which also
   covers why a shared-lock mitigation for the separate bun#23077 test flake
   was considered and ruled out.
+- **`test/launch-mapping.test.ts` gets its own retry-with-backoff** — its
+  `fetchServer()` helper bypasses `OfficialMcpRegistry` deliberately (pure
+  mapping-logic tests, not adapter tests), so it never inherited D47's fix;
+  confirmed directly in CI, where its `deriveLaunch()` tests kept failing on
+  unretried `curl` timeouts even after every adapter-based test started
+  passing reliably. Same 3-attempts/500ms-1000ms-backoff shape, retrying any
+  failure unconditionally (curl's exit code doesn't expose a 5xx-vs-4xx
+  distinction the way `fetch`'s status does, but every server this file
+  queries is a real, known-good fixture, so a failure here is always
+  network flakiness). `testOpts.timeout` raised 20000 → 50000 for the new
+  worst case. See [D48](docs/ARCHITECTURE.md).
 
 ### Changed
 - **CI test-retry headroom raised from 2 to 4 attempts** — the narrow,

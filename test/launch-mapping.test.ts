@@ -31,25 +31,50 @@ function hasNetworkAccess(): boolean {
 }
 
 const skip = !hasNetworkAccess();
-// timeout comfortably above fetchServer()'s own --max-time 10 curl call --
-// bun test --parallel now runs every test file concurrently, so these real
-// HTTP calls can queue behind each other under that concurrent load, not
+// timeout comfortably above fetchServer()'s own worst case (3 attempts x
+// 15s curl + incremental backoff between them, ~46.5s) -- bun test
+// --parallel now runs every test file concurrently, so these real HTTP
+// calls can queue behind each other under that concurrent load too, not
 // just behind curl's own single-request timeout.
 const testOpts = {
   skip: skip ? "registry.modelcontextprotocol.io unreachable" : false,
-  timeout: 20000,
+  timeout: 50000,
 };
 
-function fetchServer(name: string, version: string): McpServerJson {
-  const url = `${OFFICIAL_URL}/v0.1/servers/${encodeURIComponent(name)}/versions/${version}`;
-  // --max-time above the ~5s this normally takes, with headroom for the
-  // concurrent load bun test --parallel now puts on the live registry.
-  const raw = execFileSync("curl", ["-fsS", "--max-time", "15", url]);
-  return JSON.parse(raw.toString()).server;
+const FETCH_MAX_ATTEMPTS = 3;
+const FETCH_RETRY_BACKOFF_MS = 500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-test("deriveLaunch(): real npm/npx server produces a working stdio command", testOpts, () => {
-  const server = fetchServer("com.pulsemcp/remote-filesystem", "0.1.2");
+// Retries a transient curl failure with incremental backoff -- the live
+// registry has been observed to intermittently stall and recover within
+// seconds (see docs/ARCHITECTURE.md D47, which gave OfficialMcpRegistry
+// itself the same resilience). This helper bypasses that adapter
+// deliberately (see the file header comment), so it needs its own copy of
+// the same retry logic, not a shared one -- there's no HTTP status to
+// distinguish transient-vs-definitive here (curl's own exit code doesn't
+// separate them), but every server this file queries is a real, known-good,
+// already-published fixture, so a failure here is always network flakiness,
+// never a genuine 404.
+async function fetchServer(name: string, version: string): Promise<McpServerJson> {
+  const url = `${OFFICIAL_URL}/v0.1/servers/${encodeURIComponent(name)}/versions/${version}`;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      // --max-time above the ~5s this normally takes, with headroom for the
+      // concurrent load bun test --parallel now puts on the live registry.
+      const raw = execFileSync("curl", ["-fsS", "--max-time", "15", url]);
+      return JSON.parse(raw.toString()).server;
+    } catch (err) {
+      if (attempt >= FETCH_MAX_ATTEMPTS) throw err;
+      await sleep(FETCH_RETRY_BACKOFF_MS * attempt);
+    }
+  }
+}
+
+test("deriveLaunch(): real npm/npx server produces a working stdio command", testOpts, async () => {
+  const server = await fetchServer("com.pulsemcp/remote-filesystem", "0.1.2");
   const launch = deriveLaunch(server);
   assert.deepEqual(launch, {
     transport: "stdio",
@@ -57,14 +82,18 @@ test("deriveLaunch(): real npm/npx server produces a working stdio command", tes
   });
 });
 
-test("deriveLaunch(): real pypi/uvx server produces a working stdio command", testOpts, () => {
-  const server = fetchServer("ai.adeu/adeu", "1.5.2");
-  const launch = deriveLaunch(server);
-  assert.deepEqual(launch, { transport: "stdio", command: ["uvx", "adeu@1.5.2"] });
-});
+test(
+  "deriveLaunch(): real pypi/uvx server produces a working stdio command",
+  testOpts,
+  async () => {
+    const server = await fetchServer("ai.adeu/adeu", "1.5.2");
+    const launch = deriveLaunch(server);
+    assert.deepEqual(launch, { transport: "stdio", command: ["uvx", "adeu@1.5.2"] });
+  },
+);
 
-test("deriveLaunch(): real remote-only server produces an http launch", testOpts, () => {
-  const server = fetchServer("ac.tandem/docs-mcp", "0.3.2");
+test("deriveLaunch(): real remote-only server produces an http launch", testOpts, async () => {
+  const server = await fetchServer("ac.tandem/docs-mcp", "0.3.2");
   const launch = deriveLaunch(server);
   assert.deepEqual(launch, { transport: "http", url: "https://tandem.ac/mcp" });
 });
@@ -72,8 +101,8 @@ test("deriveLaunch(): real remote-only server produces an http launch", testOpts
 test(
   "deriveLaunch(): real oci-only server (unsupported, no remote fallback) throws",
   testOpts,
-  () => {
-    const server = fetchServer("ai.aliengiraffe/spotdb", "0.1.0");
+  async () => {
+    const server = await fetchServer("ai.aliengiraffe/spotdb", "0.1.0");
     assert.throws(() => deriveLaunch(server), /unsupported registryType.*oci/);
   },
 );
