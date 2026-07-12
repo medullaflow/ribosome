@@ -1,8 +1,7 @@
 # Public API surface
 
 This is ribosome's **library integration contract** — what a host orchestrator
-(starting with [medullaflow](https://github.com/medullaflow/medullaflow)'s own
-engine) imports to embed ribosome directly, bypassing the CLI entirely. It is
+imports to embed ribosome directly, bypassing the CLI entirely. It is
 deliberately separate from the CLI's own documentation (tracked in
 [#15](https://github.com/medullaflow/ribosome/issues/15)): a library consumer
 and a CLI user are different consumers with different needs, and conflating
@@ -52,19 +51,13 @@ from `src/ports/*.ts`, `src/adapters/**/*.ts`, and `src/orchestrator/*.ts` is
 re-exported from `src/index.ts` — cross-checked file by file, not assumed.
 Nothing internal is reachable only through a deep import.
 
-**Complete, relative to medullaflow's actual integration:** medullaflow's
-engine (`packages/engine/src/core/adapter.ts` in the
-[medullaflow](https://github.com/medullaflow/medullaflow) repo) is the one
-concrete consumer today. Its `Adapter.compile()` takes a
-`deps: ResolvedDependencies` parameter imported from `@medullaflow/ribosome` —
-**but no export named `ResolvedDependencies` exists on either side of this
-review.** The shape it almost certainly means is this package's own
+**A known integration-boundary naming decision:** an early consumer's engine
+was written to import a type named `ResolvedDependencies` from this package —
+**but no export by that name exists.** The shape it means is this package's own
 `RibosomeLockfile` (the materializer's actual return type: pool + per-consumer
-environment views). This is flagged here rather than silently patched in
-either repo: it needs a decision (rename the consuming side to
-`RibosomeLockfile`, or add a `ResolvedDependencies` alias on this side for a
-more domain-appropriate name at that integration boundary), and it's a decision
-for whoever owns that boundary, not something to resolve as a drive-by in an
-API-surface audit. Tracked so it isn't lost: this also blocks medullaflow's
-`@medullaflow/engine` from actually type-checking against a real `ribosome`
-install today.
+environment views). Resolving it is a deliberate decision for whoever owns that
+boundary — rename the consuming side to `RibosomeLockfile`, or add a
+`ResolvedDependencies` alias here for a more domain-appropriate name at the
+integration seam — not a drive-by in an API-surface audit. Noted here so the
+choice isn't lost; until it's made, a consumer written against the old name
+won't type-check against a real `ribosome` install.

@@ -151,10 +151,9 @@ trigger the source-sharing requirement. That trade-off was made deliberately:
 see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#design-decisions) for the
 full reasoning and the alternatives considered (LGPL, permissive).
 
-This does **not** mirror [medullaflow](https://github.com/medullaflow/medullaflow)'s
-own license choice (AGPL) — that project is the orchestrator ribosome was
-originally extracted from, and its own licensing is a separate decision for
-its own maintainers; ribosome's fit as a widely-embeddable resolver library
-is different from medullaflow's fit as a hosted orchestrator product.
+The license is chosen for ribosome's own fit as a widely-embeddable resolver
+library — a permissive-enough copyleft that a host application can embed it
+without the licensing reach a stronger copyleft (e.g. AGPL) would impose on a
+hosted service.
 
 Contact: https://github.com/medullaflow/ribosome/discussions

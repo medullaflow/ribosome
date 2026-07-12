@@ -85,8 +85,8 @@ ribosome prune              # drop runtimes no project references anymore
 > [Development](#development)). **What ships on npm today is the library** — see
 > just below.
 
-**What's on npm today** — embed the resolver directly (this is what host
-orchestrators like [medullaflow](https://github.com/medullaflow/medullaflow) do):
+**What's on npm today** — embed the resolver directly (this is what a host
+orchestrator does):
 
 ```bash
 npm install @medullaflow/ribosome
@@ -253,8 +253,10 @@ are real, and someone other than this repo depends on it**:
 5. **SBOM generation is live**
    ([#77](https://github.com/medullaflow/ribosome/issues/77)).
 6. **A real external consumer depends on a published release, not a local
-   link** — [medullaflow](https://github.com/medullaflow) resolves ribosome via
-   its published npm version, not a `file:`/workspace reference.
+   link** — some project outside this repo resolves ribosome via its published
+   npm version, not a `file:`/workspace reference. Guardrails prove this repo
+   trusts itself; an outside consumer shipping against a release proves someone
+   else can too.
 
 Not gated on a signed macOS installer
 ([#17](https://github.com/medullaflow/ribosome/issues/17)) or package-manager
@@ -271,8 +273,9 @@ compatibility promise**:
    [ribosome-schema](https://github.com/medullaflow/ribosome-schema)'s own
    `schemaVersion`/`SPEC.md`, which already makes that promise for the
    manifest/lockfile *shape*.
-2. **Sustained, breaking-change-free real usage**: medullaflow runs against a
-   released version for a meaningful stretch without an unreleased/patched fix.
+2. **Sustained, breaking-change-free real usage**: an external consumer runs
+   against a released version for a meaningful stretch without an
+   unreleased/patched fix.
 3. **The remaining deferred Distribution scope lands**: a signed macOS installer
    ([#17](https://github.com/medullaflow/ribosome/issues/17)) and at least one
    native package-manager channel
@@ -349,8 +352,8 @@ reference *implementation*; the *standard* it implements
 ([ribosome-schema](https://github.com/medullaflow/ribosome-schema)) is a
 separate, Apache-2.0 repo.
 
-ribosome is a component of the [medullaflow](https://github.com/medullaflow/medullaflow)
-project, designed to be reusable standalone.
+ribosome is designed to be embedded in a host orchestrator, and to be reusable
+standalone.
 
 ## Built on
 

@@ -30,7 +30,7 @@ release exercises the `smoke-test` job for real for the first time.
 - **Beta and v1/GA criteria** (README.md) — beta gates on full binary
   distribution parity (all 3 platforms, vendored mise, checksums/
   provenance, per-artifact smoke tests, SBOM) plus a real external
-  consumer (medullaflow) depending on a published release rather than a
+  consumer depending on a published release rather than a
   local link. GA gates on a documented compatibility policy for ribosome's
   own exported API/CLI surface, sustained breaking-change-free real usage,
   the remaining deferred Distribution scope (signed macOS installer,
@@ -238,10 +238,9 @@ release exercises the `smoke-test` job for real for the first time.
   depends on it as an ordinary published package (`^0.1.3`) instead of owning
   the schema. Rationale in
   [`docs/ARCHITECTURE.md` D13](docs/ARCHITECTURE.md#design-decisions).
-- **Reframed from "medullaflow extraction" to a standalone standard.** The
-  manifest is now an independent, versioned `ribosome.json` (source of truth),
-  not a hand-kept mirror of medullaflow's schema. Types are generated from the
-  schema, not the reverse.
+- **Reframed to a standalone standard.** The manifest is now an independent,
+  versioned `ribosome.json` (source of truth), not a hand-kept mirror of an
+  upstream schema. Types are generated from the schema, not the reverse.
 - Split the single `DependencyResolver` into a runtime port and a registry port;
   runtime resolution is now an `EnvironmentProvider` (no mise/`binPath` coupling).
 - MCP server runtimes are derived from the registry `server.json`, not declared
