@@ -1,0 +1,92 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: © 2026 ribosome contributors
+
+# Triggered exclusively by a published GitHub Release (#14) -- cutting a
+# release stays one deliberate, human-triggered action, mirroring
+# publish-npm.yml's own gate (never a tag push). Reuses package.yml
+# (compile + per-OS packaging, #7/#10/#11) via workflow_call, then adds the
+# baseline integrity story every artifact needs regardless of packaging
+# format (#12): a SHA256SUMS manifest and GitHub's native OIDC
+# build-provenance attestation. Both need no stored, long-lived signing
+# secret -- id-token/attestations permissions below are the whole mechanism,
+# the same posture as publish-npm.yml's trusted publishing.
+#
+# NOT yet included: #13's verification tier (installing and actually running
+# each artifact through its real package manager/installer on an
+# appropriate OS). finalize-release below is deliberately its own job, not
+# folded into package's steps, so #13 lands as `needs: [package, verify]` on
+# finalize-release later -- a failed verification then blocks the upload,
+# per #14's "nothing partially published if any artifact fails verification"
+# acceptance criterion. Until then, this workflow uploads on packaging
+# success alone.
+#
+# workflow_dispatch exists purely to rehearse this workflow without a real
+# GitHub Release: publish-npm.yml is *also* gated on `release: published`,
+# so cutting one to test this would trigger a real npm publish too. With no
+# tag_name input, a manual run packages + checksums + attests for real but
+# skips the upload step entirely -- a true dry run, nothing touches any
+# release. With a tag_name pointing at a draft release you created yourself
+# (`gh release create <tag> --draft`, deleted afterward), it also exercises
+# the real upload -- drafts don't trigger publish-npm.yml, only `published`
+# releases do.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: >-
+          Existing draft release tag to attach assets to, for a full
+          rehearsal including upload. Leave empty for a dry run that skips
+          the upload step -- nothing touches any release.
+        required: false
+
+permissions:
+  contents: write # gh release upload
+  id-token: write # required for OIDC build-provenance attestation
+  attestations: write # required to publish the attestation
+
+jobs:
+  package:
+    uses: ./.github/workflows/package.yml
+
+  finalize-release:
+    name: Checksum, attest, and upload release assets
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Every packaging job (package.yml) uploads its own artifact, all
+      # named ribosome-<os>-<arch>; merge-multiple pulls all five into one
+      # directory in a single step rather than five separate downloads.
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: ribosome-*
+          path: dist/packages
+          merge-multiple: true
+      # sha256sum ships on ubuntu-latest -- no new script, same "shell out
+      # to the real tool" convention as scripts/package-{linux,macos}.js use
+      # for dpkg-deb/rpmbuild. Verifiable by an end user with the same
+      # one-liner: sha256sum -c SHA256SUMS.
+      - name: Generate checksum manifest
+        working-directory: dist/packages
+        run: sha256sum * > SHA256SUMS
+      # subject-path is a glob: attests every file -- including SHA256SUMS
+      # itself, so the manifest's own integrity is provable too, not just
+      # the binaries it lists.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "dist/packages/*"
+      # Plain `gh release upload` against the built-in GITHUB_TOKEN, not a
+      # third-party action -- the CLI already does this, no need to add a
+      # dependency for it. Skipped on a workflow_dispatch dry run (no
+      # tag_name given) -- see the workflow_dispatch comment above.
+      - name: Upload release assets
+        if: ${{ github.event_name == 'release' || inputs.tag_name != '' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}"
+          gh release upload "$tag" dist/packages/* --clobber

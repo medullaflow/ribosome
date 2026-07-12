@@ -5,6 +5,61 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 ## [Unreleased]
 
 ### Added
+- **Checksums + build-provenance attestation, closing #12** — a new
+  `.github/workflows/release.yml`, triggered exclusively by a published
+  GitHub Release, invokes the existing `package.yml` (via `workflow_call`)
+  and then generates a `SHA256SUMS` manifest and a GitHub OIDC
+  build-provenance attestation (`actions/attest-build-provenance`) covering
+  every artifact from all three OSes, before uploading them all to the
+  release with `gh release upload`. No stored, long-lived signing secret —
+  same OIDC posture as `publish-npm.yml`'s trusted publishing. README gains
+  a "Verifying a downloaded artifact" section showing `sha256sum -c
+  SHA256SUMS` and `gh attestation verify`. Deliberately not full code
+  signing (see [#17](https://github.com/medullaflow/ribosome/issues/17),
+  [#99](https://github.com/medullaflow/ribosome/issues/99)) and deliberately
+  does not yet gate on the verification tier
+  (#13, still open) — see [D45](docs/ARCHITECTURE.md) for the job-split seam
+  that issue lands into. `release.yml` also gained a `workflow_dispatch`
+  trigger (optional `tag_name` input) so it can be rehearsed without cutting
+  a real GitHub Release — empty input dry-runs everything except the upload,
+  a tag pointing at a maintainer-created draft exercises the upload too,
+  neither triggers `publish-npm.yml`'s real npm publish the way a published
+  release would (see [D46](docs/ARCHITECTURE.md)).
+
+- **`OfficialMcpRegistry` retries transient registry failures** — a
+  connection failure/timeout or a `5xx` response now gets up to 3 attempts
+  with incremental (500ms, 1000ms) backoff before `resolve()` gives up; a
+  `404`/other `4xx` is never retried, since that's the registry answering
+  definitively. Prompted by observing the live registry itself
+  intermittently time out and then recover within seconds — real production
+  resilience, not just a CI fix, since a real `ribosome resolve` hits the
+  same registry. New deterministic tests in `test/official-registry.test.ts`
+  against local throwaway HTTP servers cover both the eventual-success and
+  exhausted-retries paths. See [D47](docs/ARCHITECTURE.md), which also
+  covers why a shared-lock mitigation for the separate bun#23077 test flake
+  was considered and ruled out.
+- **`test/launch-mapping.test.ts` gets its own retry-with-backoff** — its
+  `fetchServer()` helper bypasses `OfficialMcpRegistry` deliberately (pure
+  mapping-logic tests, not adapter tests), so it never inherited D47's fix;
+  confirmed directly in CI, where its `deriveLaunch()` tests kept failing on
+  unretried `curl` timeouts even after every adapter-based test started
+  passing reliably. Same 3-attempts/500ms-1000ms-backoff shape, retrying any
+  failure unconditionally (curl's exit code doesn't expose a 5xx-vs-4xx
+  distinction the way `fetch`'s status does, but every server this file
+  queries is a real, known-good fixture, so a failure here is always
+  network flakiness). `testOpts.timeout` raised 20000 → 50000 for the new
+  worst case. See [D48](docs/ARCHITECTURE.md).
+
+### Changed
+- **CI test-retry headroom raised from 2 to 4 attempts** — the narrow,
+  grep-gated retry for the known-upstream `oven-sh/bun#23077` false positive
+  (`ci.yml`, D38) stopped reliably clearing after 3 consecutive full-job
+  failures in one sitting. Confirmed directly against the upstream issue
+  that it's a real, still-unfixed bug (closed on GitHub but reproducing as
+  recently as bun 1.4) before touching anything — see
+  [D46](docs/ARCHITECTURE.md) for the investigation and why the
+  higher-complexity fix (splitting the colliding test files into separate
+  `bun test` invocations) stays rejected for now.
 - **Node-runnable CLI, closing #94** — `npm install @medullaflow/ribosome`
   now adds a `ribosome` command (`package.json`'s new `bin` field points at
   `dist/cli.js`, `src/cli.ts` compiled by `tsc`), so

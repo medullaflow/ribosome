@@ -35,19 +35,31 @@ jobs:
       - name: Install and build
         run: bun install && bun run build
       # Retries only on a specific, known-upstream false positive
-      # (oven-sh/bun#23077: bun's node:test compat layer occasionally
-      # mis-detects two real, module-level test() calls in different files as
-      # "nested" when one is a long-running async test -- confirmed reproducible
-      # on this suite's real mise-install/registry integration tests, not
-      # reproducible with synthetic sleeps/subprocess calls of the same shape,
-      # and not fixed as of bun 1.3.14, the latest release). Any *other*
-      # failure exits immediately on the first attempt -- this must never mask
-      # a real, deterministic test regression behind a retry.
+      # (oven-sh/bun#23077: running multiple node:test-based files together in
+      # one `bun test` invocation occasionally makes bun's node:test compat
+      # layer mis-detect a real, module-level test() call in one file as
+      # "nested" inside another file's long-running async test -- confirmed
+      # reproducible on this suite's real mise-install/registry integration
+      # tests, not reproducible with synthetic sleeps/subprocess calls of the
+      # same shape). Root cause per bun's own maintainers: multiple node:test
+      # files sharing one `bun test` run. Upstream shows the issue as closed,
+      # but it is NOT actually fixed -- confirmed still reproducing on bun 1.4
+      # (2026-06-22 comment) and a maintainer calling the closure itself
+      # "weird" (2026-07-01); no released fix exists as of this comment.
+      # max_attempts raised from 2 to 4 after observing 3 consecutive
+      # full-job failures in one sitting -- 2 attempts no longer reliably
+      # clears it. Splitting the colliding files into separate `bun test`
+      # invocations was considered and rejected (see docs/ARCHITECTURE.md
+      # D38): it would fragment bunfig.toml's per-file coverage floor (D37)
+      # across multiple independent runs, each blind to files it didn't
+      # itself touch. Any *other* failure exits immediately on the first
+      # attempt -- this must never mask a real, deterministic test regression
+      # behind a retry.
       - name: Test (retries only on the known bun#23077 false positive)
         run: |
           set -o pipefail
           attempt=1
-          max_attempts=2
+          max_attempts=4
           while true; do
             if ! bun test 2>&1 | tee /tmp/test-output.log; then
               if [ "$attempt" -lt "$max_attempts" ] && grep -q "test() inside another test() is not yet implemented in Bun" /tmp/test-output.log; then

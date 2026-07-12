@@ -6,11 +6,11 @@
 # (#7), Linux .deb/.rpm/.tar.gz (#10), and macOS zips (#11). Every packaging
 # job runs on the same ubuntu-latest runner as compilation -- none of these
 # formats require building on their target OS, only later installing and
-# running one, which is the separate verification-tier job (#13). This
-# workflow packages only; checksums/attestation (#12) and the release-gated
-# orchestration that ties everything together (#14) are separate, later
-# stages. `workflow_call` lets the future release workflow invoke this;
-# `workflow_dispatch` lets it be run and inspected on its own.
+# running one, which is the separate verification-tier job (#13, still
+# pending). This workflow packages only; checksums/attestation and
+# release-gated upload now live in release.yml, which invokes this one via
+# `workflow_call`. `workflow_dispatch` still lets this workflow be run and
+# inspected on its own, independent of a release.
 
 on:
   workflow_call:

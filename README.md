@@ -306,9 +306,38 @@ run it anyway, either:
   `xattr -d com.apple.quarantine /path/to/ribosome`
 
 Either only needs doing once per binary. Full per-OS install instructions
-(which artifact to download, checksum verification) land with
+(which artifact to download) land with
 [#15](https://github.com/medullaflow/ribosome/issues/15) once all three
 platforms are packaged.
+
+</details>
+
+<details>
+<summary><strong>Verifying a downloaded artifact</strong></summary>
+
+Every release asset (installers, archives, and packages alike) ships
+alongside a `SHA256SUMS` manifest and a GitHub build-provenance attestation
+([#12](https://github.com/medullaflow/ribosome/issues/12)) — no code
+signature yet (see the Gatekeeper note above and
+[#17](https://github.com/medullaflow/ribosome/issues/17)/[#99](https://github.com/medullaflow/ribosome/issues/99)),
+but both are independently verifiable without trusting the download channel
+itself.
+
+Checksum, from the directory holding both the artifact and `SHA256SUMS`:
+
+```sh
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+Provenance, with the [GitHub CLI](https://cli.github.com/):
+
+```sh
+gh attestation verify <downloaded-file> --repo medullaflow/ribosome
+```
+
+Both confirm the file wasn't corrupted or tampered with in transit and was
+genuinely built by this repo's own release workflow — neither confirms the
+publisher's identity the way a code signature would.
 
 </details>
 
