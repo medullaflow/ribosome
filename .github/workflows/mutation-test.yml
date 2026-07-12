@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: © 2026 ribosome contributors
+
+# Runs the mutation-adequacy signal (#31, see docs/ARCHITECTURE.md D39) on a
+# schedule rather than on every push/PR. It's advisory, not gating, and the
+# Stryker run itself takes ~5 minutes -- charging that to every commit
+# (doubled whenever a branch has an open PR, since push and pull_request
+# both fire) was cost with no matching benefit: the mutated surface
+# (materializer, resolve-mcp-server, file-registry, lockfile-writer) doesn't
+# change on most commits, so most of those runs were re-checking code no one
+# touched. workflow_dispatch stays available for an on-demand check after a
+# change to the mutated files specifically.
+
+name: mutation-test
+
+on:
+  schedule:
+    - cron: "0 7 * * 1" # Mondays 07:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  mutation-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run mutation-test
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: mutation-report
+          path: reports/mutation/
