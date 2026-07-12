@@ -1,0 +1,98 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: © 2026 ribosome contributors
+
+# Wraps the cross-compiled binaries (#6) plus bundled mise (#8) into the
+# artifact shapes users actually install: a Windows NSIS installer + zip
+# (#7), Linux .deb/.rpm/.tar.gz (#10), and macOS zips (#11). Every packaging
+# job runs on the same ubuntu-latest runner as compilation -- none of these
+# formats require building on their target OS, only later installing and
+# running one, which is the separate verification-tier job (#13). This
+# workflow packages only; checksums/attestation (#12) and the release-gated
+# orchestration that ties everything together (#14) are separate, later
+# stages. `workflow_call` lets the future release workflow invoke this;
+# `workflow_dispatch` lets it be run and inspected on its own.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  cross-compile:
+    uses: ./.github/workflows/cross-compile.yml
+
+  package-windows:
+    name: Package windows-x64 (installer + zip)
+    needs: cross-compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v6
+        with:
+          name: ribosome-cross-compiled
+          path: dist
+      - run: sudo apt-get update && sudo apt-get install -y nsis zip
+      - run: node scripts/package-windows.js dist dist/packages
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ribosome-windows-x64
+          path: |
+            dist/packages/ribosome-windows-x64.zip
+            dist/packages/ribosome-windows-x64-setup.exe
+          if-no-files-found: error
+
+  package-linux:
+    name: Package linux-${{ matrix.arch }} (.deb + .rpm + tar.gz)
+    needs: cross-compile
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v6
+        with:
+          name: ribosome-cross-compiled
+          path: dist
+      - run: sudo apt-get update && sudo apt-get install -y rpm
+      # rpmbuild refuses to build a package for an architecture the host
+      # can't itself run code for -- true even though %install here only
+      # ever copies an already-built binary in, never compiles or executes
+      # anything target-arch. Registers a QEMU binfmt handler so the kernel
+      # (and rpm's own compatibility check) sees aarch64 as buildable on
+      # this x86_64 runner; harmless no-op for the x64 leg.
+      - if: matrix.arch == 'arm64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - run: node scripts/package-linux.js ${{ matrix.arch }} dist dist/packages
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ribosome-linux-${{ matrix.arch }}
+          path: |
+            dist/packages/*.tar.gz
+            dist/packages/*.deb
+            dist/packages/*.rpm
+          if-no-files-found: error
+
+  package-macos:
+    name: Package darwin-${{ matrix.arch }} (zip)
+    needs: cross-compile
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v6
+        with:
+          name: ribosome-cross-compiled
+          path: dist
+      - run: sudo apt-get update && sudo apt-get install -y zip
+      - run: node scripts/package-macos.js ${{ matrix.arch }} dist dist/packages
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ribosome-darwin-${{ matrix.arch }}
+          path: dist/packages/*.zip
+          if-no-files-found: error

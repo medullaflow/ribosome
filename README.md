@@ -289,6 +289,29 @@ Check the milestones for current state — this is the bar, not a snapshot of it
 
 </details>
 
+<details>
+<summary><strong>macOS: bypassing Gatekeeper for the unsigned zip</strong></summary>
+
+macOS packaging ([#11](https://github.com/medullaflow/ribosome/issues/11)) ships
+as a plain zip, deliberately unsigned and unnotarized for now (a signed,
+notarized `.pkg`/`.dmg` needs a paid Apple Developer account — tracked
+separately at [#17](https://github.com/medullaflow/ribosome/issues/17)).
+The first time you run a binary extracted from it, Gatekeeper blocks it with
+"`ribosome` cannot be opened because the developer cannot be verified." To
+run it anyway, either:
+
+- Right-click (or Control-click) the `ribosome` binary in Finder → **Open** →
+  **Open** again in the confirmation dialog, or
+- Clear the quarantine attribute from a terminal:
+  `xattr -d com.apple.quarantine /path/to/ribosome`
+
+Either only needs doing once per binary. Full per-OS install instructions
+(which artifact to download, checksum verification) land with
+[#15](https://github.com/medullaflow/ribosome/issues/15) once all three
+platforms are packaged.
+
+</details>
+
 ## Two repos, on purpose
 
 - **[ribosome-schema](https://github.com/medullaflow/ribosome-schema)** — the

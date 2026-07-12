@@ -36,6 +36,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   (`scripts/check-mise-drift.js`), checks weekly for a newer mise release or
   a changed upstream checksum, mirroring `ribosome-schema`'s own
   `vendor-drift.yml`. MIT attribution added to `NOTICE`.
+- **Per-OS binary packaging, closing #7, #10, and #11** — a new
+  `.github/workflows/package.yml` wraps the cross-compiled binaries and
+  their bundled mise into the artifact shapes users actually install.
+  Windows gets an NSIS installer (`scripts/package-windows.js`, `makensis`)
+  that adds itself to the machine `PATH` on install and removes itself on
+  uninstall, plus a portable zip. Linux gets a `.tar.gz`, a `.deb`, and a
+  `.rpm` per architecture (`scripts/package-linux.js`, `dpkg-deb` +
+  `rpmbuild`), with the ribosome binary and its bundled mise living
+  package-private under `/usr/lib/ribosome/`, symlinked onto `PATH` from
+  `/usr/bin/ribosome` so it can never collide with a user's own separately
+  installed mise. macOS gets a zip only per architecture
+  (`scripts/package-macos.js`) — a signed `.pkg`/`.dmg` needs a paid Apple
+  Developer account and stays deliberately deferred (#17); README now
+  documents the Gatekeeper "unidentified developer" bypass an unsigned zip
+  extract triggers. Every format keeps the binary and its `mise-bundled`
+  sibling directory together, so `resolveMiseBinary()` finds it the same
+  way regardless of packaging format. None of these jobs need a
+  Windows/macOS/RPM-family runner to *build* — see [D44](docs/ARCHITECTURE.md)
+  for why, and what's still deferred to the verification-tier issue (#13).
 
 ## [0.1.2] - 2026-07-12
 
