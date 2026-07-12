@@ -175,7 +175,7 @@ repo, not here.
 | `OfficialMcpRegistry` and the phased `Materializer` pipeline | **Real** — integration-tested against the live MCP registry, convergence-tested end-to-end (see [`test/convergence.test.ts`](test/convergence.test.ts)) |
 | CLI (`ribosome` binary) | **Real** — [`bin/ribosome.ts`](bin/ribosome.ts): `resolve`/`prune` subcommands, tested (see [`test/cli.test.ts`](test/cli.test.ts)), compiles via `bun build --compile` |
 | Test-adequacy + review guardrails | **Real** — per-file coverage floor, an advisory mutation-score signal, and a required code-owner review gate on the merge path (see [Guardrails & Governance](https://github.com/medullaflow/ribosome/milestones)) |
-| npm package | **Unpublished** — `private: true`; the library builds and passes tests, but isn't installable yet |
+| npm package | **Unpublished** — the publish workflow ([`.github/workflows/publish-npm.yml`](.github/workflows/publish-npm.yml)) and install docs are ready; the library builds and passes tests, but the first version still needs a one-time manual bootstrap publish (see that file's own comments) before it's actually installable |
 
 What's left is packaging, not resolution logic: binary compilation per
 platform and the npm publish itself. See the
@@ -193,8 +193,11 @@ minimum bar. Pre-alpha becomes alpha here when:
    library — [`bin/ribosome.ts`](bin/ribosome.ts).
 2. **It's installable** by someone who isn't cloning this repo — either
    `npm install` (the library track) or a downloaded binary for at least one
-   platform.
-3. **Install documentation exists** for whichever of the above ships first.
+   platform. The npm track is one manual bootstrap publish away — see
+   [`publish-npm.yml`](.github/workflows/publish-npm.yml)'s own comments.
+3. ✅ **Install documentation exists** for whichever of the above ships
+   first — the npm/library track's docs are in [Install](#install) and
+   [Usage](#usage) above.
 4. **A released artifact has been verified to actually run**, via an
    automated install-and-run smoke test — not just "it compiled."
 5. ✅ **The test-adequacy and human-review guardrails are in place**
@@ -205,6 +208,81 @@ minimum bar. Pre-alpha becomes alpha here when:
 Not a fixed issue checklist (that drifts the moment an issue's scope
 changes) — check the milestones above for what's currently done against
 this bar.
+
+### What "beta" means
+
+Alpha proves one distribution track works end-to-end. Beta means **both
+tracks are real, and someone other than this repo depends on it**:
+
+1. **All three binary platforms are packaged and released through one
+   orchestration workflow**, not manual, ad hoc steps — Windows
+   ([#7](https://github.com/medullaflow/ribosome/issues/7)), Linux
+   ([#10](https://github.com/medullaflow/ribosome/issues/10)), and macOS
+   ([#11](https://github.com/medullaflow/ribosome/issues/11)) archives, tied
+   together by [#14](https://github.com/medullaflow/ribosome/issues/14).
+2. **A packaged binary is genuinely zero-setup**: `mise` is vendored into
+   every artifact ([#8](https://github.com/medullaflow/ribosome/issues/8))
+   rather than assumed to be on the user's `PATH`, with drift-detection
+   ([#9](https://github.com/medullaflow/ribosome/issues/9)) keeping that pin
+   from silently going stale.
+3. **Every artifact has a checksum and build-provenance attestation**
+   ([#12](https://github.com/medullaflow/ribosome/issues/12)) and an
+   automated install-and-run smoke test
+   ([#13](https://github.com/medullaflow/ribosome/issues/13)) — the same
+   "verified to actually run" bar alpha set for npm, extended to every
+   platform.
+4. **Install documentation covers both tracks**
+   ([#15](https://github.com/medullaflow/ribosome/issues/15)), not just npm.
+5. **SBOM generation is live**
+   ([#77](https://github.com/medullaflow/ribosome/issues/77)).
+6. **A real external consumer depends on a published release, not a local
+   link** — [medullaflow](https://github.com/medullaflow) resolves ribosome
+   via its published npm version, not a `file:`/workspace reference.
+   Guardrails and test adequacy prove this repo trusts itself; an outside
+   consumer actually shipping against a release proves someone else can
+   trust it too.
+
+Not gated on a signed macOS installer
+([#17](https://github.com/medullaflow/ribosome/issues/17)) or
+package-manager distribution
+([#16](https://github.com/medullaflow/ribosome/issues/16)) — both are
+recorded as deliberately deferred scope in their own issue titles, not
+unstarted beta work. A zip a user downloads and runs is a complete beta
+experience; installing the way a platform's users normally install
+software is the step after.
+
+### What "v1 / GA" means
+
+Beta means it works everywhere and someone depends on it. GA means **a
+compatibility promise**, not just more packaging:
+
+1. **A documented compatibility policy for ribosome's own exported surface**
+   — `Materializer`, the ports (`EnvironmentProvider`, `McpRegistry`), and
+   the CLI's subcommands/flags — spelling out what counts as a breaking
+   change and how a major version bump signals one. This is distinct from
+   [ribosome-schema](https://github.com/medullaflow/ribosome-schema)'s own
+   `schemaVersion`/`SPEC.md`, which already makes this promise for the
+   manifest/lockfile *shape*; this is the same discipline applied to
+   ribosome's own library and CLI API.
+2. **Sustained, breaking-change-free real usage**: medullaflow has run
+   against a released version for a meaningful stretch without needing an
+   unreleased or patched fix — the actual evidence a compatibility promise
+   is one this project can keep, not just one it's written down.
+3. **The remaining deferred Distribution scope lands**: a signed macOS
+   installer ([#17](https://github.com/medullaflow/ribosome/issues/17)) and
+   at least one native package-manager channel
+   ([#16](https://github.com/medullaflow/ribosome/issues/16)) — GA implies
+   installing the way each platform's users normally install software, not
+   only a downloaded archive.
+4. **A docs site is live**
+   ([#51](https://github.com/medullaflow/ribosome/issues/51)) — GA implies a
+   newcomer's path is a URL, not "read the README on GitHub."
+5. **The test-adequacy signals hold steady release over release** — the
+   coverage floor stays enforced and the mutation score doesn't regress
+   from one release to the next, not just "was real once at alpha."
+
+Not a fixed issue checklist here either — same caveat as alpha: check the
+milestones for current state, this is the bar, not a snapshot of it.
 
 ## Development
 

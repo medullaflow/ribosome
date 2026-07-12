@@ -4,6 +4,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+### Added
+- **Beta and v1/GA criteria** (README.md) — beta gates on full binary
+  distribution parity (all 3 platforms, vendored mise, checksums/
+  provenance, per-artifact smoke tests, SBOM) plus a real external
+  consumer (medullaflow) depending on a published release rather than a
+  local link. GA gates on a documented compatibility policy for ribosome's
+  own exported API/CLI surface, sustained breaking-change-free real usage,
+  the remaining deferred Distribution scope (signed macOS installer,
+  package-manager distribution), a live docs site, and non-regressing
+  test-adequacy signals release over release.
+- Fixed two stale spots in the alpha checklist/status table: `package.json`
+  no longer has `"private": true` (removed in the npm-publish-workflow
+  PR); install docs for the npm track now exist (#86) — checklist item 3
+  updated to reflect that.
+
 ### Changed
 - **Mutation testing moved off `ci.yml` onto its own scheduled workflow**
   (`.github/workflows/mutation-test.yml`) — weekly cron + `workflow_dispatch`,
