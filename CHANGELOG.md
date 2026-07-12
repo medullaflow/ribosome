@@ -26,6 +26,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   neither triggers `publish-npm.yml`'s real npm publish the way a published
   release would (see [D46](docs/ARCHITECTURE.md)).
 
+- **`OfficialMcpRegistry` retries transient registry failures** — a
+  connection failure/timeout or a `5xx` response now gets up to 3 attempts
+  with incremental (500ms, 1000ms) backoff before `resolve()` gives up; a
+  `404`/other `4xx` is never retried, since that's the registry answering
+  definitively. Prompted by observing the live registry itself
+  intermittently time out and then recover within seconds — real production
+  resilience, not just a CI fix, since a real `ribosome resolve` hits the
+  same registry. New deterministic tests in `test/official-registry.test.ts`
+  against local throwaway HTTP servers cover both the eventual-success and
+  exhausted-retries paths. See [D47](docs/ARCHITECTURE.md), which also
+  covers why a shared-lock mitigation for the separate bun#23077 test flake
+  was considered and ruled out.
+
 ### Changed
 - **CI test-retry headroom raised from 2 to 4 attempts** — the narrow,
   grep-gated retry for the known-upstream `oven-sh/bun#23077` false positive

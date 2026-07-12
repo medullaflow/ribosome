@@ -104,10 +104,12 @@ test("resolve() throws ServerNotFoundError for a name that doesn't exist", testO
   );
 });
 
-// Timeout here is longer than the adapter's own 10s resolve timeout
-// (official-registry.ts), which this test deliberately waits out in full.
+// Timeout here is longer than the adapter's own 3 retries x 10s resolve
+// timeout each, plus backoff between them (~31.5s worst case) -- this test
+// deliberately waits out every attempt in full, since a non-routable
+// address never becomes reachable no matter how many times it's retried.
 test("resolve() throws RegistryUnreachableError against a non-routable address", {
-  timeout: 15000,
+  timeout: 35000,
 }, async () => {
   await assert.rejects(
     new OfficialMcpRegistry().resolve({
@@ -121,6 +123,67 @@ test("resolve() throws RegistryUnreachableError against a non-routable address",
       return true;
     },
   );
+});
+
+test("resolve() retries a transient 5xx and eventually succeeds", async () => {
+  let requestCount = 0;
+  const server = http.createServer((_req, res) => {
+    requestCount += 1;
+    if (requestCount < 3) {
+      res.writeHead(503, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ detail: "temporarily unavailable" }));
+      return;
+    }
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({ server: { name: "com.example/x", description: "d", version: "1.0.0" } }),
+    );
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = addressPort(server);
+
+  try {
+    const result = await new OfficialMcpRegistry().resolve({
+      name: "whatever",
+      source: { type: "mcp-registry-v1", url: `http://127.0.0.1:${port}` },
+    });
+    assert.equal(result.name, "com.example/x");
+    // 2 failing attempts + the succeeding 3rd -- proves the caller sees the
+    // eventual success, not just that retrying happened at all.
+    assert.equal(requestCount, 3);
+  } finally {
+    server.close();
+  }
+});
+
+test("resolve() gives up after exhausting retries against a persistent 5xx", async () => {
+  let requestCount = 0;
+  const server = http.createServer((_req, res) => {
+    requestCount += 1;
+    res.writeHead(503, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ detail: "down for maintenance" }));
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = addressPort(server);
+
+  try {
+    await assert.rejects(
+      new OfficialMcpRegistry().resolve({
+        name: "whatever",
+        source: { type: "mcp-registry-v1", url: `http://127.0.0.1:${port}` },
+      }),
+      (err: unknown) => {
+        assert.ok(err instanceof RegistryUnreachableError);
+        assert.match(err.message, /503/);
+        return true;
+      },
+    );
+    // Exactly MAX_ATTEMPTS requests -- proves the retry loop is bounded,
+    // not a runaway/infinite retry against a registry that never recovers.
+    assert.equal(requestCount, 3);
+  } finally {
+    server.close();
+  }
 });
 
 test("resolve() throws InvalidServerDescriptorError on a malformed body", async () => {

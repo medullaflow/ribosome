@@ -27,6 +27,43 @@ import {
 } from "../../ports/mcp-registry";
 
 const RESOLVE_TIMEOUT_MS = 10_000;
+// Observed directly: the live registry intermittently times out under load
+// and recovers within seconds (see docs/ARCHITECTURE.md D47) -- a bounded
+// retry with incremental backoff absorbs that without masking a genuinely
+// unreachable registry forever. 3 attempts, 500ms/1000ms between them.
+const MAX_ATTEMPTS = 3;
+const RETRY_BACKOFF_MS = 500;
+
+function isRetryableStatus(status: number): boolean {
+  return status >= 500;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Retries a connection failure/timeout or a 5xx response -- never a 4xx or a
+ * resolved 404, which are the registry answering definitively, not a
+ * network problem retrying could fix.
+ */
+async function fetchWithRetry(url: string, headers: Record<string, string>): Promise<Response> {
+  for (let attempt = 1; ; attempt++) {
+    let response: Response;
+    try {
+      response = await fetch(url, { headers, signal: AbortSignal.timeout(RESOLVE_TIMEOUT_MS) });
+    } catch (cause) {
+      if (attempt >= MAX_ATTEMPTS) throw cause;
+      await sleep(RETRY_BACKOFF_MS * attempt);
+      continue;
+    }
+    if (isRetryableStatus(response.status) && attempt < MAX_ATTEMPTS) {
+      await sleep(RETRY_BACKOFF_MS * attempt);
+      continue;
+    }
+    return response;
+  }
+}
 
 /** The registry's success envelope. `_meta` (registry-specific bookkeeping) is unused here. */
 interface ServerEnvelope {
@@ -81,10 +118,7 @@ export class OfficialMcpRegistry implements McpRegistry {
 
     let response: Response;
     try {
-      response = await fetch(resolveUrl(query), {
-        headers,
-        signal: AbortSignal.timeout(RESOLVE_TIMEOUT_MS),
-      });
+      response = await fetchWithRetry(resolveUrl(query), headers);
     } catch (cause) {
       throw new RegistryUnreachableError(query, cause);
     }
