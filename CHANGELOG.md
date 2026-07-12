@@ -15,6 +15,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   publish a package's first-ever version — documented at the top of the
   workflow file. See
   [`docs/ARCHITECTURE.md` D40](docs/ARCHITECTURE.md#design-decisions).
+- **Post-publish npm smoke test** (`smoke-test` job in `publish-npm.yml`,
+  #19) — installs the just-published tarball into an isolated temp project
+  (no access to this repo's own source/`node_modules`) and exercises its
+  real exports, catching packaging mistakes (`files`/`main`/`types`
+  misconfiguration, a missing export) that the local test suite can't see
+  since it runs against `dist/` directly, never against what `npm install`
+  alone actually resolves. Retries install up to 5x for registry
+  propagation lag before failing for real. See
+  [`docs/ARCHITECTURE.md` D41](docs/ARCHITECTURE.md#design-decisions).
+- **npm library install docs** (README.md, #15's library-track half) — a
+  copy-pasteable post-install sanity check, and the `Usage` example now
+  also shows `writeLockfile`, the one public export it was missing.
+  Binary-track install docs (checksum verification, per-OS artifact
+  selection) remain open — the Distribution milestone's packaging work
+  they depend on hasn't landed yet.
 
 ### Added
 - **Mutation-adequacy signal** (`stryker.conf.json`, `scripts/mutation-test.sh`,

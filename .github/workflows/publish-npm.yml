@@ -66,3 +66,50 @@ jobs:
       # is redundant with package.json's own publishConfig.access, kept
       # explicit here to match ribosome-schema's publish-npm.yml.
       - run: npm publish --access public
+
+  # Verifies the PUBLISHED tarball, not the local build -- a packaging
+  # mistake (wrong "files"/"main"/"types" in package.json, a missing export)
+  # can pass every other check in this repo, since "test" and "mutation-test"
+  # both run against dist/ directly, never against what `npm install` alone
+  # actually resolves. This is deliberately not a full materialize() run
+  # against real mise/network (that's the local test suite's job, e.g.
+  # test/convergence.test.ts) -- it's specifically "did what I just
+  # published actually install and expose a working API," in an isolated
+  # temp project with no access to this repo's own source or node_modules.
+  smoke-test:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: Install the just-published version, retrying for registry propagation
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ribosome-smoke-test
+          cd /tmp/ribosome-smoke-test
+          npm init -y >/dev/null
+          version="${GITHUB_REF_NAME#v}"
+          for attempt in 1 2 3 4 5; do
+            if npm install "@medullaflow/ribosome@${version}"; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "::error::npm install still failing after 5 attempts -- not just propagation lag"
+              exit 1
+            fi
+            echo "Attempt $attempt failed (likely registry propagation lag) -- retrying in 15s"
+            sleep 15
+          done
+      - name: Import and exercise the real, published API
+        run: |
+          cd /tmp/ribosome-smoke-test
+          node -e "
+            const { validateManifest, Materializer, MiseEnvironmentProvider, OfficialMcpRegistry, writeLockfile } = require('@medullaflow/ribosome');
+            for (const [name, v] of Object.entries({ validateManifest, Materializer, MiseEnvironmentProvider, OfficialMcpRegistry, writeLockfile })) {
+              if (typeof v !== 'function') throw new Error(\`expected export '\${name}' to be a function, got \${typeof v}\`);
+            }
+            const manifest = validateManifest({ schemaVersion: '1' });
+            if (manifest.schemaVersion !== '1') throw new Error('validateManifest did not return the expected shape');
+            console.log('smoke test passed: package installs and its real exports work');
+          "
