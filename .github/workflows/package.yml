@@ -15,7 +15,6 @@
 on:
   workflow_call:
   workflow_dispatch:
-  pull_request: # TEMP: validating this workflow pre-merge, removed before merge
 
 jobs:
   cross-compile:
