@@ -5,6 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 ## [Unreleased]
 
 ### Added
+- **npm publish workflow** (`.github/workflows/publish-npm.yml`, #18) —
+  OIDC trusted publishing, gated on a published GitHub Release, mirroring
+  ribosome-schema's own publish workflow. Removed `"private": true` from
+  `package.json` (replaced by `publishConfig.access: "public"`) now that
+  publishing is a deliberate, Release-gated action rather than an accident
+  the field needed to guard against. First publish (`v0.1.0`) still needs
+  a one-time manual bootstrap from a maintainer's own machine — OIDC can't
+  publish a package's first-ever version — documented at the top of the
+  workflow file. See
+  [`docs/ARCHITECTURE.md` D40](docs/ARCHITECTURE.md#design-decisions).
+
+### Added
 - **Mutation-adequacy signal** (`stryker.conf.json`, `scripts/mutation-test.sh`,
   the `mutation-test` CI job) — closes the remaining half of #31 (coverage
   floor landed separately, above). Stryker's generic `command` runner
