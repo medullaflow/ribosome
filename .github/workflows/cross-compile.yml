@@ -57,11 +57,11 @@ jobs:
       # Fetches + checksum-verifies the pinned mise (#8) binary for each of
       # the same five targets, laid out as the package-private "mise-bundled"
       # sibling directory resolveMiseBinary() looks for
-      # (src/adapters/mise/resolve-mise-binary.ts) -- ready for a future
-      # per-target packaging job (installers/archives) to place next to its
-      # own ribosome binary, never a shared/system path. Downloaded fresh and
-      # verified here, not committed to the repo: five mise binaries run
-      # several hundred MB combined.
+      # (src/vendor/resolve-mise-binary.ts) -- consumed by the per-target
+      # packaging jobs (installers/archives, see package.yml) to place next
+      # to their own ribosome binary, never a shared/system path. Downloaded
+      # fresh and verified here, not committed to the repo: five mise
+      # binaries run several hundred MB combined.
       - name: Fetch + verify bundled mise (all 5 targets)
         run: |
           set -euo pipefail
