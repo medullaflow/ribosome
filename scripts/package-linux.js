@@ -146,23 +146,48 @@ writeFileSync(
     "",
   ].join("\n"),
 );
-// Deliberately no --target: it makes rpmbuild fully impersonate a build FOR
-// that architecture, which gates on the host's compatible-architecture
-// table (confirmed empirically: "No compatible architectures found for
-// build" building aarch64 on an x86_64 runner, since aarch64 isn't in
-// x86_64's compatible list the way e.g. i686 is). The spec's own
-// `BuildArch:` tag is sufficient here -- it only labels the resulting
-// package's Architecture field, with no such gate, which is all that's
-// needed since %install just copies an already-built binary in rather
-// than actually compiling anything for the target.
-execFileSync("rpmbuild", [
+const rpmbuildArgs = [
   "-bb",
   "--define",
   `_topdir ${rpmTop}`,
   "--buildroot",
   rpmBuildroot,
   specPath,
-]);
+];
+if (arch === "x64") {
+  // Native: the runner's own host arch, no cross-arch build involved.
+  execFileSync("rpmbuild", rpmbuildArgs);
+} else {
+  // rpmbuild refuses to build for a foreign architecture on an x86_64
+  // host at all (confirmed empirically across three separate approaches:
+  // `--target aarch64-linux`, the spec's own `BuildArch: aarch64` alone,
+  // and even with a QEMU binfmt handler registered -- every one hit the
+  // identical "No compatible architectures found for build", since the
+  // check is a static compatible-architecture table lookup, not a probe
+  // of actual execution capability). Instead of trying to satisfy that
+  // check, this sidesteps it: run rpmbuild itself as a genuinely emulated
+  // aarch64 *process* (via the same registered QEMU binfmt handler, but
+  // now actually used) inside a matching container, so rpm sees itself as
+  // native and the cross-arch gate never triggers at all. Runs as the
+  // container's root, so ownership is handed back to the host user
+  // afterward for the plain `copyFileSync` below to read.
+  const repoRoot = process.cwd();
+  execFileSync("docker", [
+    "run",
+    "--rm",
+    "--platform",
+    "linux/arm64",
+    "-v",
+    `${repoRoot}:${repoRoot}`,
+    "-w",
+    repoRoot,
+    "rockylinux:9",
+    "bash",
+    "-c",
+    `dnf install -y -q rpm-build >/dev/null && rpmbuild ${rpmbuildArgs.map((a) => `'${a}'`).join(" ")}`,
+  ]);
+  execFileSync("sudo", ["chown", "-R", `${process.getuid()}:${process.getgid()}`, rpmTop]);
+}
 const builtRpm = join(
   rpmTop,
   "RPMS",
