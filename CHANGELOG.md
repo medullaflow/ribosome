@@ -4,6 +4,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-07-12
+
+Docs-only release, cut to refresh the README rendered on npmjs.com.
+
 ### Changed
 - **Reached alpha** — README status badge/table/checklist updated: npm
   package is published (`v0.1.1`, fully automated OIDC pipeline including
@@ -17,6 +21,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   criteria collapsed into a `<details>` block. Fixed stale post-alpha text
   (a leftover "pre-alpha … npm publish still missing" callout) and a
   `^0.1.8`→`^0.1.9` schema-dependency drift in `docs/ARCHITECTURE.md`.
+- **Removed medullaflow-project references** — every mention of the
+  medullaflow project/consumer genericized to "a host orchestrator" / "an
+  external consumer" across README, CONTRIBUTING, `docs/API.md`,
+  `docs/ARCHITECTURE.md`, and a source comment. The `@medullaflow/` npm
+  scope, repo URLs, and the `schema.ribosome.medullaflow.org` `$id` domain
+  (published identity) are unchanged. Added a Distribution issue (#94) for a
+  node-runnable CLI so `npx @medullaflow/ribosome resolve` works.
 
 ## [0.1.1] - 2026-07-12
 
