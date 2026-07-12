@@ -56,6 +56,16 @@ jobs:
           name: ribosome-cross-compiled
           path: dist
       - run: sudo apt-get update && sudo apt-get install -y rpm
+      # rpmbuild refuses to build a package for an architecture the host
+      # can't itself run code for -- true even though %install here only
+      # ever copies an already-built binary in, never compiles or executes
+      # anything target-arch. Registers a QEMU binfmt handler so the kernel
+      # (and rpm's own compatibility check) sees aarch64 as buildable on
+      # this x86_64 runner; harmless no-op for the x64 leg.
+      - if: matrix.arch == 'arm64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
       - run: node scripts/package-linux.js ${{ matrix.arch }} dist dist/packages
       - uses: actions/upload-artifact@v7
         with:
