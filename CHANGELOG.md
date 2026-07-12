@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 ## [Unreleased]
 
 ### Added
+- **Checksums + build-provenance attestation, closing #12** — a new
+  `.github/workflows/release.yml`, triggered exclusively by a published
+  GitHub Release, invokes the existing `package.yml` (via `workflow_call`)
+  and then generates a `SHA256SUMS` manifest and a GitHub OIDC
+  build-provenance attestation (`actions/attest-build-provenance`) covering
+  every artifact from all three OSes, before uploading them all to the
+  release with `gh release upload`. No stored, long-lived signing secret —
+  same OIDC posture as `publish-npm.yml`'s trusted publishing. README gains
+  a "Verifying a downloaded artifact" section showing `sha256sum -c
+  SHA256SUMS` and `gh attestation verify`. Deliberately not full code
+  signing (see [#17](https://github.com/medullaflow/ribosome/issues/17),
+  [#99](https://github.com/medullaflow/ribosome/issues/99)) and deliberately
+  does not yet gate on the verification tier
+  (#13, still open) — see [D45](docs/ARCHITECTURE.md) for the job-split seam
+  that issue lands into.
 - **Node-runnable CLI, closing #94** — `npm install @medullaflow/ribosome`
   now adds a `ribosome` command (`package.json`'s new `bin` field points at
   `dist/cli.js`, `src/cli.ts` compiled by `tsc`), so
