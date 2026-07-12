@@ -63,22 +63,3 @@ jobs:
         run: bun run typecheck:test
       - name: Compileability regression check (bun build --compile)
         run: bun run compile
-
-  mutation-test:
-    runs-on: ubuntu-latest
-    # Advisory, not gating (#31): a young, largely agent-authored codebase
-    # can have a mutation score that swings a lot from one PR to the next --
-    # gating on it from day one is friction without payoff (see
-    # docs/ARCHITECTURE.md D39). continue-on-error keeps the score visible
-    # on every PR without ever blocking a merge on it.
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v7
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - run: bun run mutation-test
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: mutation-report
-          path: reports/mutation/

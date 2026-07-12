@@ -4,6 +4,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+### Changed
+- **Mutation testing moved off `ci.yml` onto its own scheduled workflow**
+  (`.github/workflows/mutation-test.yml`) — weekly cron + `workflow_dispatch`,
+  instead of every `push`/`pull_request`. It cost ~5 minutes per run (doubled
+  on branches with an open PR, since both events fired), for a signal that
+  only changes when one of the 4 mutated files does. See
+  [`docs/ARCHITECTURE.md` D39](docs/ARCHITECTURE.md#design-decisions).
+
 ### Added
 - **npm publish workflow** (`.github/workflows/publish-npm.yml`, #18) —
   OIDC trusted publishing, gated on a published GitHub Release, mirroring
