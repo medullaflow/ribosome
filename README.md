@@ -74,19 +74,19 @@ provisioning and upfront resolution those formats don't do.
 resolve it into a lockfile:
 
 ```bash
-ribosome resolve            # reads ribosome.json → writes ribosome.lock.json
-ribosome prune              # drop runtimes no project references anymore
+npx @medullaflow/ribosome resolve   # reads ribosome.json → writes ribosome.lock.json
+npx @medullaflow/ribosome prune     # drop runtimes no project references anymore
 ```
 
-> **How to get that `ribosome` command today:** the standalone binary is the
-> [Distribution](https://github.com/medullaflow/ribosome/milestones) (beta)
-> track — per-platform packaged binaries are in progress. Right now you can run
-> the CLI from a clone (`bun bin/ribosome.ts resolve`, see
-> [Development](#development)). **What ships on npm today is the library** — see
-> just below.
+> **No install needed** — `npx` fetches and runs the CLI from npm on the fly.
+> For repeat use: `npm install -g @medullaflow/ribosome` puts a plain
+> `ribosome` command on `PATH`. A standalone binary requiring no Node at all
+> is the [Distribution](https://github.com/medullaflow/ribosome/milestones)
+> (beta) track, still in progress — see [Development](#development) to run
+> from a clone in the meantime (`bun bin/ribosome.ts resolve`).
 
-**What's on npm today** — embed the resolver directly (this is what a host
-orchestrator does):
+**Embedding the resolver as a library** — what a host orchestrator does
+instead of shelling out to the CLI:
 
 ```bash
 npm install @medullaflow/ribosome
@@ -195,7 +195,7 @@ live; binary distribution across platforms is the beta track.
 | Ports (`EnvironmentProvider`, `McpRegistry`) | **Real** interfaces |
 | `MiseEnvironmentProvider` | **Real** — integration-tested against a real mise install |
 | `OfficialMcpRegistry` + the phased `Materializer` pipeline | **Real** — integration-tested against the live MCP registry, convergence-tested end-to-end ([`test/convergence.test.ts`](test/convergence.test.ts)) |
-| CLI (`ribosome` binary) | **Real** — [`bin/ribosome.ts`](bin/ribosome.ts): `resolve`/`prune`, tested ([`test/cli.test.ts`](test/cli.test.ts)), compiles via `bun build --compile`. Per-platform packaging is the beta track. |
+| CLI (`ribosome` command) | **Real**, two entry points sharing one implementation ([`src/cli.ts`](src/cli.ts)): `npx @medullaflow/ribosome` / `npm install -g` (tsc → `dist/cli.js`, tested [`test/cli-node.test.ts`](test/cli-node.test.ts)) and the standalone-binary target (`bin/ribosome.ts`, `bun build --compile`, tested [`test/cli.test.ts`](test/cli.test.ts)). Per-platform packaged binaries are the remaining beta-track piece. |
 | Test-adequacy + review guardrails | **Real** — per-file coverage floor, an advisory mutation-score signal, and a required code-owner review gate |
 | npm package | **Published** — [`@medullaflow/ribosome`](https://www.npmjs.com/package/@medullaflow/ribosome); `v0.1.1` went through the fully automated OIDC publish pipeline, `smoke-test` included |
 
