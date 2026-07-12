@@ -22,7 +22,7 @@
 // README/release notes.
 
 const { mkdirSync, copyFileSync, chmodSync, rmSync } = require("node:fs");
-const { join } = require("node:path");
+const { join, resolve } = require("node:path");
 const { execFileSync } = require("node:child_process");
 
 const ARCHES = ["x64", "arm64"];
@@ -49,7 +49,9 @@ chmodSync(join(stage, "ribosome"), 0o755);
 copyFileSync(miseBinPath, join(stage, "mise-bundled", "mise"));
 chmodSync(join(stage, "mise-bundled", "mise"), 0o755);
 
-const zipOut = join(outDir, `${dirName}.zip`);
+// Absolute: zip's own cwd below is <work>, so a path relative to <outDir>
+// (as opposed to <work>) would resolve against the wrong directory.
+const zipOut = resolve(join(outDir, `${dirName}.zip`));
 execFileSync("zip", ["-r", "-X", zipOut, dirName], { cwd: work });
 console.log(`✓ built ${zipOut}`);
 

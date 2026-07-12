@@ -46,6 +46,7 @@ jobs:
     needs: cross-compile
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         arch: [x64, arm64]
     steps:
@@ -70,6 +71,7 @@ jobs:
     needs: cross-compile
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         arch: [x64, arm64]
     steps:

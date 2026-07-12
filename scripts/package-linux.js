@@ -141,10 +141,17 @@ writeFileSync(
     "",
   ].join("\n"),
 );
+// Deliberately no --target: it makes rpmbuild fully impersonate a build FOR
+// that architecture, which gates on the host's compatible-architecture
+// table (confirmed empirically: "No compatible architectures found for
+// build" building aarch64 on an x86_64 runner, since aarch64 isn't in
+// x86_64's compatible list the way e.g. i686 is). The spec's own
+// `BuildArch:` tag is sufficient here -- it only labels the resulting
+// package's Architecture field, with no such gate, which is all that's
+// needed since %install just copies an already-built binary in rather
+// than actually compiling anything for the target.
 execFileSync("rpmbuild", [
   "-bb",
-  "--target",
-  `${ARCH_NAMES[arch].rpm}-linux`,
   "--define",
   `_topdir ${rpmTop}`,
   "--buildroot",
