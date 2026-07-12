@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: © 2026 ribosome contributors
+
+# Detects drift in the pinned mise release (#9): verifies the pinned
+# checksums still match mise's own published SHASUMS256.txt, and that no
+# newer mise release has been published since the pin. Detection is
+# automated; the actual pin bump stays a human-reviewed PR (node
+# scripts/vendor-mise-update.js). On drift, opens/updates a tracking issue.
+# Mirrors the sibling ribosome-schema repo's vendor-drift.yml exactly.
+
+name: mise-drift
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - id: drift
+        run: node scripts/check-mise-drift.js
+      - if: failure()
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const title = "Pinned mise release drift detected";
+            const body = [
+              "`node scripts/check-mise-drift.js` failed — either the pinned mise release's",
+              "checksums no longer match its own published SHASUMS256.txt, or a newer mise",
+              "release is out.",
+              "",
+              `See the failed run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              "",
+              "Resolve by reviewing the change and, if adopting it, running",
+              "`node scripts/vendor-mise-update.js <version>` in a PR.",
+            ].join("\n");
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: "open", labels: "vendor-drift",
+            });
+            if (existing.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ["vendor-drift"],
+              });
+            }

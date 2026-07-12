@@ -88,14 +88,9 @@ import type {
   PruneResult,
   RuntimeRequirement,
 } from "../../ports/environment-provider";
+import { resolveMiseBinary } from "../../vendor/resolve-mise-binary";
 
 const execFileAsync = promisify(execFile);
-
-async function mise(args: string[], cwd: string, poolDir: string | undefined): Promise<string> {
-  const env = poolDir ? { ...process.env, MISE_DATA_DIR: poolDir } : process.env;
-  const { stdout } = await execFileAsync("mise", args, { cwd, env });
-  return stdout.trim();
-}
 
 interface InstallFailure {
   tool: string;
@@ -117,6 +112,17 @@ export class MiseEnvironmentProvider implements EnvironmentProvider {
   // pool.dir, coincidentally the same exact tool version) -- a stale-cache
   // read would silently point composeView() at the wrong pool.
   private readonly binPaths = new Map<string, string[]>();
+
+  // Resolved once per instance (#8): env override > bundled sibling binary >
+  // PATH -- see resolve-mise-binary.ts. Not re-resolved per call: none of
+  // its inputs (env, the running executable's own path) change mid-process.
+  private readonly miseBin = resolveMiseBinary();
+
+  private async mise(args: string[], cwd: string, poolDir: string | undefined): Promise<string> {
+    const env = poolDir ? { ...process.env, MISE_DATA_DIR: poolDir } : process.env;
+    const { stdout } = await execFileAsync(this.miseBin, args, { cwd, env });
+    return stdout.trim();
+  }
 
   async materialize(reqs: RuntimeRequirement[], ctx: MaterializeContext): Promise<PooledRuntime[]> {
     const settled = await Promise.allSettled(
@@ -161,9 +167,9 @@ export class MiseEnvironmentProvider implements EnvironmentProvider {
     const spec = req.versionSpec && req.versionSpec !== "latest" ? req.versionSpec : "latest";
     const query = `${req.tool}@${spec}`;
 
-    await mise(["install", query], cwd, poolDir);
+    await this.mise(["install", query], cwd, poolDir);
 
-    const installPath = await mise(["where", query], cwd, poolDir);
+    const installPath = await this.mise(["where", query], cwd, poolDir);
     const version = installPath.split("/").filter(Boolean).pop();
     if (!version) {
       throw new Error(
@@ -172,7 +178,7 @@ export class MiseEnvironmentProvider implements EnvironmentProvider {
     }
 
     const id = `${req.tool}@${version}`;
-    const raw = await mise(["bin-paths", `${req.tool}@${version}`], cwd, poolDir);
+    const raw = await this.mise(["bin-paths", `${req.tool}@${version}`], cwd, poolDir);
     this.binPaths.set(id, raw.split("\n").filter(Boolean));
 
     return { id, tool: req.tool, requested: req.versionSpec, version };
@@ -193,18 +199,18 @@ export class MiseEnvironmentProvider implements EnvironmentProvider {
     const trackedDir = join(cwd, ".ribosome");
     await mkdir(trackedDir, { recursive: true });
     const queries = pool.map((p) => `${p.tool}@${p.version}`);
-    await mise(["use", ...queries], trackedDir, poolDir);
+    await this.mise(["use", ...queries], trackedDir, poolDir);
   }
 
   async prune(ctx: PruneContext, options: { dryRun?: boolean } = {}): Promise<PruneResult> {
-    const raw = await mise(["ls", "--prunable", "--json"], ctx.cwd, ctx.poolDir);
+    const raw = await this.mise(["ls", "--prunable", "--json"], ctx.cwd, ctx.poolDir);
     const parsed: PrunableByTool = JSON.parse(raw);
     const pruned = Object.entries(parsed).flatMap(([tool, versions]) =>
       versions.map((v) => ({ tool, version: v.version })),
     );
 
     if (!options.dryRun && pruned.length > 0) {
-      await mise(["prune", "--yes"], ctx.cwd, ctx.poolDir);
+      await this.mise(["prune", "--yes"], ctx.cwd, ctx.poolDir);
     }
 
     return { pruned };

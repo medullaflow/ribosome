@@ -39,11 +39,10 @@ Any copy or modified version you distribute must retain:
                     THIRD-PARTY COMPONENTS
 ================================================================================
 
-This section is empty: nothing is currently vendored/bundled into this repo
-or a distributed artifact. `@medullaflow/ribosome-schema` is not listed here
-despite being a different license (Apache-2.0) — it's a sibling first-party
-project (see this file's opening section above and its own NOTICE), not
-third-party content, and an ordinary published dependency besides.
+`@medullaflow/ribosome-schema` is not listed here despite being a different
+license (Apache-2.0) — it's a sibling first-party project (see this file's
+opening section above and its own NOTICE), not third-party content, and an
+ordinary published dependency besides.
 
 Ordinary runtime/dev dependencies, resolved via the package manager (never
 vendored/copied into this repo), remain under their own licenses — each
@@ -53,14 +52,18 @@ never need an update just because an ordinary dependency was added, removed,
 or bumped.
 
 --------------------------------------------------------------------------------
-[TEMPLATE — add an entry here ONLY for genuinely vendored/bundled content,
-e.g. a future bundled mise binary (see docs/ARCHITECTURE.md D16) — never for
-an ordinary package-manager dependency, see CONTRIBUTING.md]
+mise
 --------------------------------------------------------------------------------
-Version: X.Y.Z
-License: MIT/Apache/GPL/etc.
-Copyright: YEAR OWNER
-Location: vendor/name OR the packaged artifact it ships in
+Version: pinned in src/vendor/mise-version.ts (bump via
+  `node scripts/vendor-mise-update.js <version>`, never by hand)
+License: MIT
+Copyright: jdx and mise contributors (https://github.com/jdx/mise)
+Location: fetched + checksum-verified at release-build time
+  (.github/workflows/cross-compile.yml, scripts/fetch-bundled-mise.js) and
+  placed in each packaged binary artifact's package-private "mise-bundled"
+  sibling directory — never committed to this repo (five platform binaries,
+  several hundred MB combined), never a shared/system path. Not present in
+  the `npm install` library distribution, which bundles no binary at all.
 
 ================================================================================
 Disclaimer: Third-party components remain under their respective licenses.

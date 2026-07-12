@@ -54,8 +54,24 @@ jobs:
           check dist/ribosome-darwin-x64      "Mach-O 64-bit x86_64 executable"
           check dist/ribosome-darwin-arm64    "Mach-O 64-bit arm64 executable"
 
-      # One bundle, all five binaries -- what downstream per-target packaging
-      # jobs (installers/archives) consume; they never recompile.
+      # Fetches + checksum-verifies the pinned mise (#8) binary for each of
+      # the same five targets, laid out as the package-private "mise-bundled"
+      # sibling directory resolveMiseBinary() looks for
+      # (src/adapters/mise/resolve-mise-binary.ts) -- ready for a future
+      # per-target packaging job (installers/archives) to place next to its
+      # own ribosome binary, never a shared/system path. Downloaded fresh and
+      # verified here, not committed to the repo: five mise binaries run
+      # several hundred MB combined.
+      - name: Fetch + verify bundled mise (all 5 targets)
+        run: |
+          set -euo pipefail
+          for target in linux-x64 linux-arm64 darwin-x64 darwin-arm64 windows-x64; do
+            node scripts/fetch-bundled-mise.js "$target" "dist/mise-bundled/$target"
+          done
+
+      # One bundle, all five ribosome binaries plus their matching bundled
+      # mise -- what downstream per-target packaging jobs (installers/
+      # archives) consume; they never recompile or re-fetch.
       - uses: actions/upload-artifact@v7
         with:
           name: ribosome-cross-compiled
@@ -65,4 +81,5 @@ jobs:
             dist/ribosome-windows-x64.exe
             dist/ribosome-darwin-x64
             dist/ribosome-darwin-arm64
+            dist/mise-bundled
           if-no-files-found: error
