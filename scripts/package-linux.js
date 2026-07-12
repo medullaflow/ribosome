@@ -54,7 +54,12 @@ const binaryPath = resolve(join(compiledDir, `ribosome-${target}`));
 const miseBinPath = resolve(join(compiledDir, "mise-bundled", target, "mise"));
 
 mkdirSync(outDir, { recursive: true });
-const work = join(outDir, `.work-${target}`);
+// Absolute for the same reason as binaryPath/miseBinPath above: rpm's
+// %{buildroot} and _topdir macros are only ever meant to hold absolute
+// paths -- fed a relative one, rpmbuild mangles it by prepending a bare "/"
+// (confirmed empirically: "mkdir: cannot create directory '/dist'" trying
+// to create what should have been "dist/packages/...").
+const work = resolve(join(outDir, `.work-${target}`));
 rmSync(work, { recursive: true, force: true });
 
 function stageInto(dir) {
