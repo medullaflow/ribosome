@@ -4,6 +4,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-12
+
+First release to go through the automated `publish-npm.yml` pipeline —
+`v0.1.0` was the one-time manual bootstrap publish OIDC trusted publishing
+can't perform for a package's first-ever version (see
+[`docs/ARCHITECTURE.md` D40](docs/ARCHITECTURE.md#design-decisions)). This
+release exercises the `smoke-test` job for real for the first time.
+
 ### Added
 - **Beta and v1/GA criteria** (README.md) — beta gates on full binary
   distribution parity (all 3 platforms, vendored mise, checksums/
