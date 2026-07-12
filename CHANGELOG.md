@@ -19,7 +19,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   [#99](https://github.com/medullaflow/ribosome/issues/99)) and deliberately
   does not yet gate on the verification tier
   (#13, still open) — see [D45](docs/ARCHITECTURE.md) for the job-split seam
-  that issue lands into.
+  that issue lands into. `release.yml` also gained a `workflow_dispatch`
+  trigger (optional `tag_name` input) so it can be rehearsed without cutting
+  a real GitHub Release — empty input dry-runs everything except the upload,
+  a tag pointing at a maintainer-created draft exercises the upload too,
+  neither triggers `publish-npm.yml`'s real npm publish the way a published
+  release would (see [D46](docs/ARCHITECTURE.md)).
+
+### Changed
+- **CI test-retry headroom raised from 2 to 4 attempts** — the narrow,
+  grep-gated retry for the known-upstream `oven-sh/bun#23077` false positive
+  (`ci.yml`, D38) stopped reliably clearing after 3 consecutive full-job
+  failures in one sitting. Confirmed directly against the upstream issue
+  that it's a real, still-unfixed bug (closed on GitHub but reproducing as
+  recently as bun 1.4) before touching anything — see
+  [D46](docs/ARCHITECTURE.md) for the investigation and why the
+  higher-complexity fix (splitting the colliding test files into separate
+  `bun test` invocations) stays rejected for now.
 - **Node-runnable CLI, closing #94** — `npm install @medullaflow/ribosome`
   now adds a `ribosome` command (`package.json`'s new `bin` field points at
   `dist/cli.js`, `src/cli.ts` compiled by `tsc`), so

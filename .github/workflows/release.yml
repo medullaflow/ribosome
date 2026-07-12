@@ -19,10 +19,28 @@
 # per #14's "nothing partially published if any artifact fails verification"
 # acceptance criterion. Until then, this workflow uploads on packaging
 # success alone.
+#
+# workflow_dispatch exists purely to rehearse this workflow without a real
+# GitHub Release: publish-npm.yml is *also* gated on `release: published`,
+# so cutting one to test this would trigger a real npm publish too. With no
+# tag_name input, a manual run packages + checksums + attests for real but
+# skips the upload step entirely -- a true dry run, nothing touches any
+# release. With a tag_name pointing at a draft release you created yourself
+# (`gh release create <tag> --draft`, deleted afterward), it also exercises
+# the real upload -- drafts don't trigger publish-npm.yml, only `published`
+# releases do.
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: >-
+          Existing draft release tag to attach assets to, for a full
+          rehearsal including upload. Leave empty for a dry run that skips
+          the upload step -- nothing touches any release.
+        required: false
 
 permissions:
   contents: write # gh release upload
@@ -63,8 +81,12 @@ jobs:
           subject-path: "dist/packages/*"
       # Plain `gh release upload` against the built-in GITHUB_TOKEN, not a
       # third-party action -- the CLI already does this, no need to add a
-      # dependency for it.
+      # dependency for it. Skipped on a workflow_dispatch dry run (no
+      # tag_name given) -- see the workflow_dispatch comment above.
       - name: Upload release assets
+        if: ${{ github.event_name == 'release' || inputs.tag_name != '' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" dist/packages/* --clobber
+        run: |
+          tag="${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}"
+          gh release upload "$tag" dist/packages/* --clobber
