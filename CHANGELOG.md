@@ -8,6 +8,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 - **Reached alpha** — README status badge/table/checklist updated: npm
   package is published (`v0.1.1`, fully automated OIDC pipeline including
   `smoke-test`), all 5 alpha criteria now met. Closes #18 for real.
+- **README restructured for adoption** — reordered to
+  problem → solution → quickstart, positioned as "the MCP package manager"
+  with an inline architecture diagram and a "vs. wiring it up by hand"
+  comparison table. Quickstart now leads with the CLI mental model
+  (`ribosome resolve`) while stating honestly that npm ships the library
+  today and the standalone-binary CLI is the beta track. Alpha/beta/GA
+  criteria collapsed into a `<details>` block. Fixed stale post-alpha text
+  (a leftover "pre-alpha … npm publish still missing" callout) and a
+  `^0.1.8`→`^0.1.9` schema-dependency drift in `docs/ARCHITECTURE.md`.
 
 ## [0.1.1] - 2026-07-12
 
