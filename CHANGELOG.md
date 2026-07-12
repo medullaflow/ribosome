@@ -4,6 +4,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+### Changed
+- **Reached alpha** — README status badge/table/checklist updated: npm
+  package is published (`v0.1.1`, fully automated OIDC pipeline including
+  `smoke-test`), all 5 alpha criteria now met. Closes #18 for real.
+
 ## [0.1.1] - 2026-07-12
 
 First release to go through the automated `publish-npm.yml` pipeline —

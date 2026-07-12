@@ -8,8 +8,9 @@ shared pool and pinning everything into one reproducible lockfile — so missing
 tools or unresolvable servers fail at validation time, not mid-execution.
 
 [![CI](https://github.com/medullaflow/ribosome/actions/workflows/ci.yml/badge.svg)](https://github.com/medullaflow/ribosome/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@medullaflow/ribosome)](https://www.npmjs.com/package/@medullaflow/ribosome)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL--2.0-blue.svg)](https://www.mozilla.org/en-US/MPL/2.0/)
-[![Status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-orange.svg)](#status)
+[![Status: alpha](https://img.shields.io/badge/status-alpha-yellow.svg)](#status)
 
 ---
 
@@ -43,12 +44,6 @@ JSON Schema files, no conformance fixtures** — see
 ```bash
 npm install @medullaflow/ribosome
 ```
-
-> Not yet published: the publish workflow ([`.github/workflows/publish-npm.yml`](.github/workflows/publish-npm.yml))
-> is ready, but the first version still needs a one-time manual bootstrap
-> publish (see that file's own comments) — see [Status](#status).
-> `@medullaflow/ribosome-schema`, the standard this repo implements, is
-> already published — see [Development](#development).
 
 Once installed, confirm it resolved correctly before writing any of your own
 code against it:
@@ -175,39 +170,38 @@ repo, not here.
 | `OfficialMcpRegistry` and the phased `Materializer` pipeline | **Real** — integration-tested against the live MCP registry, convergence-tested end-to-end (see [`test/convergence.test.ts`](test/convergence.test.ts)) |
 | CLI (`ribosome` binary) | **Real** — [`bin/ribosome.ts`](bin/ribosome.ts): `resolve`/`prune` subcommands, tested (see [`test/cli.test.ts`](test/cli.test.ts)), compiles via `bun build --compile` |
 | Test-adequacy + review guardrails | **Real** — per-file coverage floor, an advisory mutation-score signal, and a required code-owner review gate on the merge path (see [Guardrails & Governance](https://github.com/medullaflow/ribosome/milestones)) |
-| npm package | **Unpublished** — the publish workflow ([`.github/workflows/publish-npm.yml`](.github/workflows/publish-npm.yml)) and install docs are ready; the library builds and passes tests, but the first version still needs a one-time manual bootstrap publish (see that file's own comments) before it's actually installable |
+| npm package | **Published** — [`@medullaflow/ribosome`](https://www.npmjs.com/package/@medullaflow/ribosome) on npm; `v0.1.1` went through the fully automated OIDC publish pipeline, `smoke-test` included |
 
-What's left is packaging, not resolution logic: binary compilation per
-platform and the npm publish itself. See the
+What's left is binary packaging, not resolution logic or npm distribution —
+both of those are real and live. See the
 [Distribution](https://github.com/medullaflow/ribosome/milestones) milestone
 and [ROADMAP.md](ROADMAP.md).
 
-### What "alpha" means
+### What "alpha" meant
 
-Deliberately not gated on every item in the Distribution milestone — full
-three-platform packaging, signed installers, SBOM/provenance, and
-package-manager distribution are real but are post-alpha hardening, not a
-minimum bar. Pre-alpha becomes alpha here when:
+This package cleared its own alpha bar — kept here as a record of what that
+bar was, not a live checklist:
 
 1. ✅ **A CLI exists** and can be invoked directly, not only embedded as a
    library — [`bin/ribosome.ts`](bin/ribosome.ts).
-2. **It's installable** by someone who isn't cloning this repo — either
-   `npm install` (the library track) or a downloaded binary for at least one
-   platform. The npm track is one manual bootstrap publish away — see
-   [`publish-npm.yml`](.github/workflows/publish-npm.yml)'s own comments.
-3. ✅ **Install documentation exists** for whichever of the above ships
-   first — the npm/library track's docs are in [Install](#install) and
+2. ✅ **It's installable** by someone who isn't cloning this repo —
+   `npm install @medullaflow/ribosome`, published via
+   [`publish-npm.yml`](.github/workflows/publish-npm.yml)'s OIDC trusted
+   publishing.
+3. ✅ **Install documentation exists** — see [Install](#install) and
    [Usage](#usage) above.
-4. **A released artifact has been verified to actually run**, via an
-   automated install-and-run smoke test — not just "it compiled."
+4. ✅ **A released artifact has been verified to actually run**: `v0.1.1`'s
+   `smoke-test` job installed the real published tarball into an isolated
+   project and exercised its real exports — not just "it compiled."
 5. ✅ **The test-adequacy and human-review guardrails are in place**
    ([Guardrails & Governance](https://github.com/medullaflow/ribosome/milestones)):
    a coverage floor plus a mutation-adequacy signal, and a required
    code-owner review gate on the merge path.
 
-Not a fixed issue checklist (that drifts the moment an issue's scope
-changes) — check the milestones above for what's currently done against
-this bar.
+Not gated on full three-platform binary packaging, signed installers,
+SBOM/provenance, or package-manager distribution — those are real, tracked
+in the [Distribution](https://github.com/medullaflow/ribosome/milestones)
+milestone, and are beta-track expansion, not an alpha requirement.
 
 ### What "beta" means
 
