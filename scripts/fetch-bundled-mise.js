@@ -38,8 +38,15 @@ if (!entry || !outputDir) {
   process.exit(2);
 }
 
-const checksumLine = new RegExp(`"${target}":\\s*"([a-f0-9]{64})"`).exec(pinSrc);
-const expectedSha256 = checksumLine?.[1];
+// A single fixed pattern parses every pinned checksum at once, then `target`
+// (already validated above against MISE_TARGETS' own keys) is a plain object
+// lookup -- deliberately not a per-target `new RegExp(target)`, which would
+// build a regular expression out of a command-line argument.
+const checksums = {};
+for (const m of pinSrc.matchAll(/"([a-z0-9-]+)":\s*"([a-f0-9]{64})"/g)) {
+  checksums[m[1]] = m[2];
+}
+const expectedSha256 = checksums[target];
 if (!expectedSha256) throw new Error(`no pinned checksum for target "${target}" in ${pinFile}`);
 
 (async () => {

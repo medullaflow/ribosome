@@ -23,11 +23,18 @@ function readPin() {
   const src = readFileSync(pinFile, "utf8");
   const version = /MISE_VERSION\s*=\s*"([^"]+)"/.exec(src)?.[1];
   if (!version) throw new Error(`could not parse MISE_VERSION from ${pinFile}`);
+
+  // One fixed pattern parses every pinned checksum at once, rather than
+  // building a per-target `new RegExp(target)` (same discipline as
+  // fetch-bundled-mise.js, even though these target names come from this
+  // repo's own MISE_TARGETS, never external input).
   const checksums = {};
+  for (const m of src.matchAll(/"([a-z0-9-]+)":\s*"([a-f0-9]{64})"/g)) {
+    checksums[m[1]] = m[2];
+  }
   for (const target of Object.keys(MISE_TARGETS)) {
-    const sha256 = new RegExp(`"${target}":\\s*"([a-f0-9]{64})"`).exec(src)?.[1];
-    if (!sha256) throw new Error(`could not parse checksum for "${target}" from ${pinFile}`);
-    checksums[target] = sha256;
+    if (!checksums[target])
+      throw new Error(`could not parse checksum for "${target}" from ${pinFile}`);
   }
   return { version, checksums };
 }
