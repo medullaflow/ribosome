@@ -113,3 +113,53 @@ jobs:
             if (manifest.schemaVersion !== '1') throw new Error('validateManifest did not return the expected shape');
             console.log('smoke test passed: package installs and its real exports work');
           "
+      # Exercises the npm-installed `bin` entry (#94) itself -- the library
+      # exports check above proves `require("@medullaflow/ribosome")` works,
+      # but says nothing about `dist/cli.js`, a separate file with its own
+      # package.json "bin" wiring and shebang that could be broken while the
+      # library exports stay fine. `resolve` needs a real mise, so it's
+      # installed here specifically for this step, not the whole job.
+      - name: Install mise (for the CLI's resolve, wired to MiseEnvironmentProvider)
+        run: curl -fsSL https://mise.run | sh
+      - name: Exercise the published CLI (`node_modules/.bin/ribosome`, same as npx)
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.local/bin:$PATH"
+          cd /tmp/ribosome-smoke-test
+          version="${GITHUB_REF_NAME#v}"
+          installed_version="$(node_modules/.bin/ribosome --version)"
+          if [ "$installed_version" != "$version" ]; then
+            echo "::error::ribosome --version printed '$installed_version', expected '$version'"
+            exit 1
+          fi
+          cat > local-registry.json <<'EOF'
+          {
+            "servers": [
+              {
+                "name": "com.example/smoke-test-tool",
+                "description": "smoke-test-only fixture, never published anywhere",
+                "version": "1.0.0",
+                "packages": [
+                  { "registryType": "npm", "identifier": "@example/smoke-test-tool", "version": "1.0.0", "transport": { "type": "stdio" } }
+                ]
+              }
+            ]
+          }
+          EOF
+          registry_url="file://$(pwd)/local-registry.json"
+          cat > ribosome.json <<EOF
+          {
+            "schemaVersion": "1",
+            "registries": { "default": "local", "sources": { "local": { "type": "file", "url": "$registry_url" } } },
+            "mcpServers": { "tool": { "source": "registry", "name": "com.example/smoke-test-tool", "version": "1.0.0" } }
+          }
+          EOF
+          node_modules/.bin/ribosome resolve
+          node -e "
+            const fs = require('node:fs');
+            const lockfile = JSON.parse(fs.readFileSync('ribosome.lock.json', 'utf8'));
+            if (lockfile.mcpServers.length !== 1 || lockfile.mcpServers[0].id !== 'tool') {
+              throw new Error('published CLI resolve did not produce the expected lockfile shape');
+            }
+            console.log('smoke test passed: the published CLI (dist/cli.js) installs and resolves for real');
+          "

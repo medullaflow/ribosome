@@ -4,6 +4,9 @@
   "description": "Standalone dependency resolver: tool/runtime versions via mise-en-place, MCP servers via the MCP Registry. Designed for embedding in workflow orchestrators.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "ribosome": "dist/cli.js"
+  },
   "license": "MPL-2.0",
   "publishConfig": {
     "access": "public"
@@ -17,6 +20,7 @@
   "scripts": {
     "prepare": "bun scripts/setup-git-hooks.js",
     "build": "tsc",
+    "postbuild": "chmod +x dist/cli.js",
     "typecheck:test": "tsc --noEmit -p tsconfig.check.json",
     "test": "bun run build && bun test",
     "compile": "bun build --compile bin/ribosome.ts --outfile dist/ribosome",

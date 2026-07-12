@@ -4,6 +4,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+### Added
+- **Node-runnable CLI, closing #94** — `npm install @medullaflow/ribosome`
+  now adds a `ribosome` command (`package.json`'s new `bin` field points at
+  `dist/cli.js`, `src/cli.ts` compiled by `tsc`), so
+  `npx @medullaflow/ribosome resolve` works with zero setup. Closes the gap
+  between "the MCP package manager" positioning and npm only shipping a
+  library. The CLI's shared logic moved from `bin/ribosome.ts` into
+  `src/cli.ts`; `bin/ribosome.ts` (the separate `bun build --compile`
+  standalone-binary target) now delegates to it instead of duplicating it,
+  so the two entry points can't drift apart in behavior. New
+  [`test/cli-node.test.ts`](test/cli-node.test.ts) exercises `dist/cli.js`
+  directly under plain `node`. `publish-npm.yml`'s `smoke-test` job now
+  installs mise and runs a real `resolve` through the published tarball's
+  `node_modules/.bin/ribosome`, not just the library exports.
+
 ## [0.1.2] - 2026-07-12
 
 Docs-only release, cut to refresh the README rendered on npmjs.com.
