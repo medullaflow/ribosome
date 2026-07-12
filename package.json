@@ -1,6 +1,6 @@
 {
   "name": "@medullaflow/ribosome",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Standalone dependency resolver: tool/runtime versions via mise-en-place, MCP servers via the MCP Registry. Designed for embedding in workflow orchestrators.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

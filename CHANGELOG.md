@@ -4,6 +4,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-07-12
+
+The binary distribution track goes live: per-OS packaged installers and
+archives for Windows, Linux, and macOS, each bundling a vendored mise
+runtime, with checksums and build-provenance attestation on every release
+going forward. npm installs also gain a runnable CLI.
+
 ### Added
 - **Checksums + build-provenance attestation, closing #12** — a new
   `.github/workflows/release.yml`, triggered exclusively by a published
@@ -49,17 +56,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   queries is a real, known-good fixture, so a failure here is always
   network flakiness). `testOpts.timeout` raised 20000 → 50000 for the new
   worst case. See [D48](docs/ARCHITECTURE.md).
-
-### Changed
-- **CI test-retry headroom raised from 2 to 4 attempts** — the narrow,
-  grep-gated retry for the known-upstream `oven-sh/bun#23077` false positive
-  (`ci.yml`, D38) stopped reliably clearing after 3 consecutive full-job
-  failures in one sitting. Confirmed directly against the upstream issue
-  that it's a real, still-unfixed bug (closed on GitHub but reproducing as
-  recently as bun 1.4) before touching anything — see
-  [D46](docs/ARCHITECTURE.md) for the investigation and why the
-  higher-complexity fix (splitting the colliding test files into separate
-  `bun test` invocations) stays rejected for now.
 - **Node-runnable CLI, closing #94** — `npm install @medullaflow/ribosome`
   now adds a `ribosome` command (`package.json`'s new `bin` field points at
   `dist/cli.js`, `src/cli.ts` compiled by `tsc`), so
@@ -110,6 +106,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   way regardless of packaging format. None of these jobs need a
   Windows/macOS/RPM-family runner to *build* — see [D44](docs/ARCHITECTURE.md)
   for why, and what's still deferred to the verification-tier issue (#13).
+
+### Changed
+- **CI test-retry headroom raised from 2 to 4 attempts** — the narrow,
+  grep-gated retry for the known-upstream `oven-sh/bun#23077` false positive
+  (`ci.yml`, D38) stopped reliably clearing after 3 consecutive full-job
+  failures in one sitting. Confirmed directly against the upstream issue
+  that it's a real, still-unfixed bug (closed on GitHub but reproducing as
+  recently as bun 1.4) before touching anything — see
+  [D46](docs/ARCHITECTURE.md) for the investigation and why the
+  higher-complexity fix (splitting the colliding test files into separate
+  `bun test` invocations) stays rejected for now.
 
 ## [0.1.2] - 2026-07-12
 
