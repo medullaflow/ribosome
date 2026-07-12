@@ -39,7 +39,7 @@ see [ribosome-schema](https://github.com/medullaflow/ribosome-schema) for that.
 
 ```mermaid
 flowchart LR
-    USER(["Developer / medullaflow<br/>(person or host orchestrator)"])
+    USER(["Developer / host orchestrator<br/>(person or embedding application)"])
     RIBO["ribosome<br/>(this repo)"]
     SCHEMA[["ribosome-schema<br/>external · Apache-2.0<br/>the standard"]]
     MISE[("mise-en-place<br/>external CLI")]

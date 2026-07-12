@@ -41,9 +41,8 @@ export interface MaterializeOptions {
 }
 
 /**
- * The single public entry point an orchestrator (e.g. medullaflow's engine)
- * depends on. It sees only manifests and lockfiles — never mise, a registry, or
- * a pool internal.
+ * The single public entry point a host orchestrator depends on. It sees only
+ * manifests and lockfiles — never mise, a registry, or a pool internal.
  */
 export interface DependencyMaterializer {
   /**
