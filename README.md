@@ -44,9 +44,24 @@ JSON Schema files, no conformance fixtures** — see
 npm install @medullaflow/ribosome
 ```
 
-> Pre-alpha: not yet published (see [Status](#status)). `@medullaflow/ribosome-schema`,
-> the standard this repo implements, is already published — see
-> [Development](#development).
+> Not yet published: the publish workflow ([`.github/workflows/publish-npm.yml`](.github/workflows/publish-npm.yml))
+> is ready, but the first version still needs a one-time manual bootstrap
+> publish (see that file's own comments) — see [Status](#status).
+> `@medullaflow/ribosome-schema`, the standard this repo implements, is
+> already published — see [Development](#development).
+
+Once installed, confirm it resolved correctly before writing any of your own
+code against it:
+
+```bash
+node -e "const r = require('@medullaflow/ribosome'); console.log(typeof r.Materializer === 'function' ? 'ribosome installed OK' : 'unexpected export shape')"
+```
+
+This is a minimal sanity check (the package's own real exports respond, not a
+placeholder), not the automated install-and-run verification the release
+process itself does on every publish — see
+[`.github/workflows/publish-npm.yml`](.github/workflows/publish-npm.yml)'s
+`smoke-test` job for that.
 
 ## The manifest — `ribosome.json`
 
@@ -89,6 +104,7 @@ import {
   Materializer,
   MiseEnvironmentProvider,
   OfficialMcpRegistry,
+  writeLockfile,       // optional: persist the result to ribosome.lock.json
 } from "@medullaflow/ribosome";
 
 // 1. Validate untyped input against the normative schema — throws listing every
@@ -105,6 +121,9 @@ const lock = await materializer.materialize(manifest, { cwd: projectRoot });
 // lock.runtimePool — deduplicated runtimes, exact versions
 // lock.project     — the project's environment view (pathPrepend + envVars)
 // lock.mcpServers  — resolved servers: launch command + isolated environment
+
+// 3. Optional: persist it, the same way the CLI's own `resolve` command does.
+await writeLockfile(lock, projectRoot);
 ```
 
 > **Pre-alpha, but the pipeline above is real end-to-end:** `MiseEnvironmentProvider`,
