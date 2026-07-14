@@ -34,43 +34,17 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Install and build
         run: bun install && bun run build
-      # Retries only on a specific, known-upstream false positive
-      # (oven-sh/bun#23077: running multiple node:test-based files together in
-      # one `bun test` invocation occasionally makes bun's node:test compat
-      # layer mis-detect a real, module-level test() call in one file as
-      # "nested" inside another file's long-running async test -- confirmed
-      # reproducible on this suite's real mise-install/registry integration
-      # tests, not reproducible with synthetic sleeps/subprocess calls of the
-      # same shape). Root cause per bun's own maintainers: multiple node:test
-      # files sharing one `bun test` run. Upstream shows the issue as closed,
-      # but it is NOT actually fixed -- confirmed still reproducing on bun 1.4
-      # (2026-06-22 comment) and a maintainer calling the closure itself
-      # "weird" (2026-07-01); no released fix exists as of this comment.
-      # max_attempts raised from 2 to 4 after observing 3 consecutive
-      # full-job failures in one sitting -- 2 attempts no longer reliably
-      # clears it. Splitting the colliding files into separate `bun test`
-      # invocations was considered and rejected (see docs/ARCHITECTURE.md
-      # D38): it would fragment bunfig.toml's per-file coverage floor (D37)
-      # across multiple independent runs, each blind to files it didn't
-      # itself touch. Any *other* failure exits immediately on the first
-      # attempt -- this must never mask a real, deterministic test regression
-      # behind a retry.
-      - name: Test (retries only on the known bun#23077 false positive)
-        run: |
-          set -o pipefail
-          attempt=1
-          max_attempts=4
-          while true; do
-            if ! bun test 2>&1 | tee /tmp/test-output.log; then
-              if [ "$attempt" -lt "$max_attempts" ] && grep -q "test() inside another test() is not yet implemented in Bun" /tmp/test-output.log; then
-                echo "::warning::Known upstream Bun bug (oven-sh/bun#23077) produced a false-positive failure -- retrying (attempt $((attempt + 1))/$max_attempts)"
-                attempt=$((attempt + 1))
-                continue
-              fi
-              exit 1
-            fi
-            break
-          done
+      # Real `node --test`, not `bun test` (see D50): bun's own node:test
+      # compatibility layer has a still-unfixed upstream bug
+      # (oven-sh/bun#23077) that used to need a narrow, grep-gated retry
+      # here (see git history / D38 / D46 for that mitigation, now removed
+      # entirely rather than merely relaxed). scripts/run-tests.js compiles
+      # test/ to CommonJS via tsc and runs the result under real Node,
+      # which the test files were always compatible with (none import from
+      # "bun:test") -- bun remains this repo's install/build toolchain
+      # (D14), only the test runner changed.
+      - name: Test
+        run: node scripts/run-tests.js
       - name: Typecheck the whole tree, including tests (#30)
         run: bun run typecheck:test
       - name: Compileability regression check (bun build --compile)

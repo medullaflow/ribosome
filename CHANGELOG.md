@@ -21,6 +21,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   convention rather than adding a workspace. See
   [D49](docs/ARCHITECTURE.md#design-decisions).
 
+### Changed
+- **Test runner switched from `bun test` to real `node --test`** —
+  `scripts/run-tests.js` compiles `test/` to CommonJS via `tsc` and runs it
+  under Node, eliminating the still-unfixed upstream
+  [oven-sh/bun#23077](https://github.com/oven-sh/bun/issues/23077)
+  (`NotImplementedError: test() inside another test()`) outright rather than
+  retrying around it — every test file already imported from `"node:test"`,
+  never `"bun:test"`, so this runs the same code against the API it was
+  actually written for. `ci.yml`'s D38/D46 retry-on-known-bug wrapper is
+  gone entirely, not just relaxed. `bunfig.toml`'s per-file coverage floor
+  (D37) is replaced by a Node-native equivalent, `scripts/check-test-coverage.js`,
+  parsing `node --test`'s own LCOV output — same 80% threshold, lines only
+  (V8's coverage has no separate "statements" axis, and its function-count
+  for `tsc`'s auto-generated re-export getters doesn't track test quality).
+  `bun` remains this repo's install/build toolchain (D14), unaffected —
+  only the test runner changed. See
+  [D50](docs/ARCHITECTURE.md#design-decisions).
+
 ### Fixed
 - **`scripts/architecture-rules.js`'s no-local-schema check now skips
   `.astro`** — Astro's own gitignored content-collection type cache
