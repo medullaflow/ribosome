@@ -1,0 +1,60 @@
+---
+title: ribosome
+description: The MCP package manager — runtimes and MCP servers, resolved together, before any workflow runs.
+template: splash
+hero:
+  tagline: >-
+    One manifest declares the language runtimes <em>and</em> the MCP servers
+    a project needs. ribosome resolves them together, deduplicates shared
+    runtimes, and pins everything into one reproducible lockfile —
+    <strong>before any workflow runs</strong>.
+  actions:
+    - text: Quickstart
+      link: /guides/quickstart/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/medullaflow/ribosome
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## The problem
+
+Standing up a project that uses MCP servers today means doing two unrelated
+jobs by hand: installing the language runtimes each server needs, and
+configuring each server separately, with no shared version policy, no
+deduplication when ten servers all want `node@24`, and nothing pinned.
+Nothing ties the two together — you find out something's missing when a run
+fails halfway through.
+
+## What ribosome does
+
+<CardGrid stagger>
+	<Card title="One manifest" icon="document">
+		Runtimes and MCP servers declared together in a single `ribosome.json`,
+		instead of two separate, unsynced configs.
+	</Card>
+	<Card title="Resolved up front" icon="approve-check">
+		A missing tool or an unresolvable server fails at validation time --
+		before any workflow runs -- with every failure reported at once, not
+		one at a time.
+	</Card>
+	<Card title="Deduplicated and pinned" icon="padlock">
+		Ten servers needing `node@24` produce one pool entry, one install. Every
+		resolution lands in a single reproducible lockfile.
+	</Card>
+</CardGrid>
+
+## Why a separate repo from ribosome-schema?
+
+Think npm-the-CLI vs. the `package.json` format: **ribosome is the tool,
+[ribosome-schema](https://github.com/medullaflow/ribosome-schema) is the
+format it reads.** ribosome depends on it as an ordinary package and carries
+no schema files of its own -- see [how ribosome works](/architecture/) for
+the full design.
+
+```sh
+npx @medullaflow/ribosome resolve
+```

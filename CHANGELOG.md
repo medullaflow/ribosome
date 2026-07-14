@@ -4,6 +4,31 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+### Added
+- **Docs site, closing #51** — `docs/site/`, an [Astro](https://astro.build) +
+  [Starlight](https://starlight.astro.build) project, deployed to
+  `https://ribosome.medullaflow.org` by a new `.github/workflows/docs.yml`
+  on every push to `main` touching it. Landing page, a Quickstart, a CLI
+  reference (built from the CLI's own real `--help` output, not hand-copied),
+  a manifest reference, the Library API reference (adapted from
+  `docs/API.md`), a schema-reference page linking out to
+  `ribosome-schema` rather than duplicating it, and a reader-friendly pass
+  over `docs/ARCHITECTURE.md`'s design (not the dense decision log itself).
+  `@astrojs/sitemap` + a hand-written `robots.txt` cover indexability;
+  Starlight's built-in Pagefind search and auto-generated sidebar cover
+  navigability. Own `package.json`/lockfile under `docs/site/`, kept out of
+  the root install — mirrors `ribosome-schema`'s `bindings/typescript`
+  convention rather than adding a workspace. See
+  [D49](docs/ARCHITECTURE.md#design-decisions).
+
+### Fixed
+- **`scripts/architecture-rules.js`'s no-local-schema check now skips
+  `.astro`** — Astro's own gitignored content-collection type cache
+  generates a file literally named `<collection>.schema.json`, which the
+  architecture fitness function's Rule 3 (no hand-authored JSON Schema
+  files in this repo) was flagging as a violation. Same treatment as the
+  pre-existing `dist` skip entry: a generated build artifact, not source.
+
 ## [0.1.3] - 2026-07-12
 
 The binary distribution track goes live: per-OS packaged installers and
