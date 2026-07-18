@@ -123,7 +123,7 @@ missing its header. Useful commands:
     bun run spdx:fix     # insert missing headers automatically
 
 This repo's toolchain is [bun](https://bun.sh) (install/build/test/compile),
-not Node — see [`docs/ARCHITECTURE.md` D14](docs/ARCHITECTURE.md#design-decisions).
+not Node — see [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## Why MPL-2.0?
 
@@ -148,7 +148,7 @@ requiring anyone who embeds it to open their whole product. Unlike the AGPL,
 MPL-2.0 has no separate network-service clause — running a modified version
 as a hosted/SaaS offering, without distributing copies, does not by itself
 trigger the source-sharing requirement. That trade-off was made deliberately:
-see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#design-decisions) for the
+see [`docs/DECISIONS.md`](docs/DECISIONS.md) for the
 full reasoning and the alternatives considered (LGPL, permissive).
 
 The license is chosen for ribosome's own fit as a widely-embeddable resolver

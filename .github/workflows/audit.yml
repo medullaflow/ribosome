@@ -1,7 +1,7 @@
 name: Dependency Audit
 
 # Two complementary triggers, the same shape as dependency-review.yml +
-# dependabot.yml (D32): push/pull_request catches a newly-introduced
+# dependabot.yml: push/pull_request catches a newly-introduced
 # vulnerable dependency landing in a PR; the weekly schedule catches a CVE
 # disclosed LATER against a dependency already sitting in the lockfile --
 # something dependency-review-action can never see, since it only ever

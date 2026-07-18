@@ -104,8 +104,6 @@ filesystem access: it never writes anything itself, it just returns a value.
 
 ## Two repos, one standard
 
-The standard and the reference implementation are deliberately separate
-repositories with separate licenses, not just a code-organization detail —
-see the [manifest reference](/reference/manifest/#two-repos-on-purpose) for
-why, and the [schema reference](/reference/schema/) for where the standard
-itself lives.
+The manifest/lockfile format is a separate standard with its own repository and
+license — see the [schema reference](/reference/schema/) for where it lives and
+why that separation is deliberate rather than a code-organization detail.

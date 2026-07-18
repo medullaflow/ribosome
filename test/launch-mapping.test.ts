@@ -32,7 +32,7 @@ function hasNetworkAccess(): boolean {
 
 const skip = !hasNetworkAccess();
 // timeout comfortably above fetchServer()'s own worst case (3 attempts x
-// 25s curl + incremental backoff between them (1000ms + 2000ms), D51 ->
+// 25s curl + incremental backoff between them (1000ms + 2000ms) ->
 // ~78s), not just a single request's own budget.
 const testOpts = {
   skip: skip ? "registry.modelcontextprotocol.io unreachable" : false,
@@ -49,9 +49,9 @@ function sleep(ms: number): Promise<void> {
 // Retries a transient curl failure with incremental backoff -- the live
 // registry has been observed to intermittently stall and recover within
 // seconds, and separately to enter sustained multi-minute periods of
-// ~12-13s response times even while answering with a real 200 (see
-// docs/ARCHITECTURE.md D47 and D51, which gave OfficialMcpRegistry itself
-// the same resilience/headroom). This helper bypasses that adapter
+// ~12-13s response times even while answering with a real 200 (the same
+// resilience/headroom OfficialMcpRegistry itself has). This helper
+// bypasses that adapter
 // deliberately (see the file header comment), so it needs its own copy of
 // the same retry logic, not a shared one -- there's no HTTP status to
 // distinguish transient-vs-definitive here (curl's own exit code doesn't
@@ -63,7 +63,7 @@ async function fetchServer(name: string, version: string): Promise<McpServerJson
   for (let attempt = 1; ; attempt++) {
     try {
       // --max-time above the ~12-13s the live registry has been observed
-      // taking even when healthy (D51), with real headroom, not just
+      // taking even when healthy, with real headroom, not just
       // matching that latency.
       const raw = execFileSync("curl", ["-fsS", "--max-time", "25", url]);
       return JSON.parse(raw.toString()).server;

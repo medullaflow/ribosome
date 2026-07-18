@@ -36,7 +36,7 @@ function hasNetworkAccess(): boolean {
 
 const skip = !hasNetworkAccess();
 // Matches the adapter's own full worst case (3 attempts x 20s + 1000ms +
-// 2000ms backoff = 63s, D51) -- this test goes through the real adapter,
+// 2000ms backoff = 63s) -- this test goes through the real adapter,
 // so it can legitimately need all 3 attempts before settling, and a
 // tighter test-level timeout would fire before the adapter's own retry
 // loop finishes (see official-registry.test.ts for how this was caught).

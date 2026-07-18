@@ -15,7 +15,7 @@ where your own discipline is currently the only thing holding the line.
 
 This repo's own dev/build/test/compile toolchain runs entirely on
 [bun](https://bun.sh) (≥ 1.3.0), **not Node** — see
-[`docs/ARCHITECTURE.md` D14](docs/ARCHITECTURE.md#design-decisions). Do not
+[`docs/DECISIONS.md`](docs/DECISIONS.md). Do not
 reach for `node`, `npm run`, `npx`, or a Node-based script runner for this
 repo's tasks. (`tsc` is still the type-checker and still emits the portable
 `dist/` that downstream `npm install` consumers get — that's a consumer
@@ -99,7 +99,8 @@ src/adapters/      concretions — mise/, mcp-registry/
 src/orchestrator/  the phased materialization pipeline
 src/index.ts       the public API surface + default wiring (the only place wiring lives)
 test/              the test suite
-docs/ARCHITECTURE.md   design, dependency rules, decision log (D1–D17)
+docs/ARCHITECTURE.md   design, dependency rules, diagrams
+docs/DECISIONS.md      the design-decision log (why each choice was made)
 docs/API.md            the versioned library integration contract (what src/index.ts exports, and why)
 ```
 

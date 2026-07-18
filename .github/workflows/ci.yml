@@ -34,15 +34,14 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Install and build
         run: bun install && bun run build
-      # Real `node --test`, not `bun test` (see D50): bun's own node:test
+      # Real `node --test`, not `bun test`: bun's own node:test
       # compatibility layer has a still-unfixed upstream bug
       # (oven-sh/bun#23077) that used to need a narrow, grep-gated retry
-      # here (see git history / D38 / D46 for that mitigation, now removed
-      # entirely rather than merely relaxed). scripts/run-tests.js compiles
-      # test/ to CommonJS via tsc and runs the result under real Node,
-      # which the test files were always compatible with (none import from
-      # "bun:test") -- bun remains this repo's install/build toolchain
-      # (D14), only the test runner changed.
+      # here, since removed entirely rather than merely relaxed.
+      # scripts/run-tests.js compiles test/ to CommonJS via tsc and runs the
+      # result under real Node, which the test files were always compatible
+      # with (none import from "bun:test") -- bun remains this repo's
+      # install/build toolchain, only the test runner changed.
       - name: Test
         run: node scripts/run-tests.js
       - name: Typecheck the whole tree, including tests (#30)

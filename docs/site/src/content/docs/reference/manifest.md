@@ -3,12 +3,9 @@ title: "Manifest reference: ribosome.json"
 description: Every field in the ribosome.json manifest format.
 ---
 
-The full, normative format lives in
-**[ribosome-schema](https://github.com/medullaflow/ribosome-schema)** — see
-[Two repos, on purpose](#two-repos-on-purpose) below for why that's a separate
-repository. This page is a reader-friendly walkthrough of the same schema,
-kept in sync by hand; the JSON Schema itself is the source of truth for
-tooling and validation.
+This is a reader-friendly walkthrough of the `ribosome.json` format. The
+normative source of truth is the [ribosome schema](/reference/schema/) — the
+JSON Schema that tooling and validation actually use.
 
 ```jsonc
 {
@@ -120,11 +117,7 @@ All three server shapes accept an optional `permissions` array — opaque
 scope strings passed through to the orchestrator embedding ribosome.
 Semantics are defined by that orchestrator, not by ribosome itself.
 
-## Two repos, on purpose
+## The normative format
 
-ribosome is the *tool*; `ribosome-schema` is the *format* it reads — think
-npm-the-CLI vs. `package.json`. ribosome depends on
-[`@medullaflow/ribosome-schema`](https://github.com/medullaflow/ribosome-schema)
-as an ordinary package and carries no schema files of its own, so the
-normative format has exactly one source of truth regardless of which repo you
-land in.
+Every field above is defined by the [ribosome schema](/reference/schema/), the
+JSON Schema this walkthrough tracks. When the two disagree, the schema wins.
