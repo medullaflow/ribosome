@@ -60,7 +60,7 @@ jobs:
       # Every packaging job (package.yml) uploads its own artifact, all
       # named ribosome-<os>-<arch>; merge-multiple pulls all five into one
       # directory in a single step rather than five separate downloads.
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           pattern: ribosome-*
           path: dist/packages
