@@ -76,7 +76,7 @@ jobs:
       # itself, so the manifest's own integrity is provable too, not just
       # the binaries it lists.
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: "dist/packages/*"
       # Plain `gh release upload` against the built-in GITHUB_TOKEN, not a
