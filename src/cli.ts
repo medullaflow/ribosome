@@ -20,6 +20,7 @@ import { readFile } from "node:fs/promises";
 import { resolve as resolvePath } from "node:path";
 import { SchemaValidationError, validateManifest } from "@medullaflow/ribosome-schema";
 import packageJson from "../package.json";
+import { FallbackMcpRegistry, parseMirrorUrls } from "./adapters/mcp-registry/fallback-registry";
 import { FileMcpRegistry } from "./adapters/mcp-registry/file-registry";
 import { OfficialMcpRegistry } from "./adapters/mcp-registry/official-registry";
 import { MiseEnvironmentProvider } from "./adapters/mise/mise-environment-provider";
@@ -98,9 +99,15 @@ async function runResolve(manifestPath: string, cwd: string): Promise<number> {
     throw err;
   }
 
+  const mirrorUrls = parseMirrorUrls();
+  const officialRegistry =
+    mirrorUrls.length > 0
+      ? new FallbackMcpRegistry(new OfficialMcpRegistry(), mirrorUrls)
+      : new OfficialMcpRegistry();
+
   const materializer = new Materializer({
     environmentProvider: new MiseEnvironmentProvider(),
-    registries: [new OfficialMcpRegistry(), new FileMcpRegistry()],
+    registries: [officialRegistry, new FileMcpRegistry()],
   });
 
   let lockfile: Awaited<ReturnType<typeof materializer.materialize>>;
