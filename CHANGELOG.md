@@ -18,8 +18,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   Starlight's built-in Pagefind search and auto-generated sidebar cover
   navigability. Own `package.json`/lockfile under `docs/site/`, kept out of
   the root install — mirrors `ribosome-schema`'s `bindings/typescript`
-  convention rather than adding a workspace. See
-  [D49](docs/ARCHITECTURE.md#design-decisions).
+  convention rather than adding a workspace.
 - **`FallbackMcpRegistry`** — a new `McpRegistry` adapter wrapping any
   protocol adapter (e.g. `OfficialMcpRegistry`) with an ordered list of
   mirror base URLs, tried in order only on `RegistryUnreachableError`; a
@@ -31,8 +30,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   "Anthropic registry" or "Microsoft registry" endpoint to wire in as a
   default (Anthropic backs the one official registry; Microsoft's offering
   is a self-hosted, per-tenant Azure API Center pattern) — a user supplies
-  real mirror URLs themselves. See
-  [D52](docs/ARCHITECTURE.md#design-decisions).
+  real mirror URLs themselves.
 
 ### Changed
 - **Test runner switched from `bun test` to real `node --test`** —
@@ -42,15 +40,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   (`NotImplementedError: test() inside another test()`) outright rather than
   retrying around it — every test file already imported from `"node:test"`,
   never `"bun:test"`, so this runs the same code against the API it was
-  actually written for. `ci.yml`'s D38/D46 retry-on-known-bug wrapper is
+  actually written for. `ci.yml`'s retry-on-known-bug wrapper is
   gone entirely, not just relaxed. `bunfig.toml`'s per-file coverage floor
-  (D37) is replaced by a Node-native equivalent, `scripts/check-test-coverage.js`,
+  is replaced by a Node-native equivalent, `scripts/check-test-coverage.js`,
   parsing `node --test`'s own LCOV output — same 80% threshold, lines only
   (V8's coverage has no separate "statements" axis, and its function-count
   for `tsc`'s auto-generated re-export getters doesn't track test quality).
-  `bun` remains this repo's install/build toolchain (D14), unaffected —
-  only the test runner changed. See
-  [D50](docs/ARCHITECTURE.md#design-decisions).
+  `bun` remains this repo's install/build toolchain, unaffected —
+  only the test runner changed.
 - **`OfficialMcpRegistry`'s resolve timeout and retry backoff raised (10s
   → 20s, 500ms → 1000ms base)** — the live MCP registry was observed
   answering with a real `200` but consistently taking ~12-13s to do so
@@ -61,7 +58,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   to match the new worst case, and `hasNetworkAccess()`'s reachability
   pre-check raised 5s → 10s everywhere it appears, so a slow-but-healthy
   registry can't cause a test to silently skip instead of exercising the
-  retry logic. See [D51](docs/ARCHITECTURE.md#design-decisions).
+  retry logic.
 
 ### Fixed
 - **`scripts/architecture-rules.js`'s no-local-schema check now skips
@@ -92,13 +89,12 @@ going forward. npm installs also gain a runnable CLI.
   signing (see [#17](https://github.com/medullaflow/ribosome/issues/17),
   [#99](https://github.com/medullaflow/ribosome/issues/99)) and deliberately
   does not yet gate on the verification tier
-  (#13, still open) — see [D45](docs/ARCHITECTURE.md) for the job-split seam
-  that issue lands into. `release.yml` also gained a `workflow_dispatch`
+  (#13, still open). `release.yml` also gained a `workflow_dispatch`
   trigger (optional `tag_name` input) so it can be rehearsed without cutting
   a real GitHub Release — empty input dry-runs everything except the upload,
   a tag pointing at a maintainer-created draft exercises the upload too,
   neither triggers `publish-npm.yml`'s real npm publish the way a published
-  release would (see [D46](docs/ARCHITECTURE.md)).
+  release would.
 
 - **`OfficialMcpRegistry` retries transient registry failures** — a
   connection failure/timeout or a `5xx` response now gets up to 3 attempts
@@ -109,12 +105,10 @@ going forward. npm installs also gain a runnable CLI.
   resilience, not just a CI fix, since a real `ribosome resolve` hits the
   same registry. New deterministic tests in `test/official-registry.test.ts`
   against local throwaway HTTP servers cover both the eventual-success and
-  exhausted-retries paths. See [D47](docs/ARCHITECTURE.md), which also
-  covers why a shared-lock mitigation for the separate bun#23077 test flake
-  was considered and ruled out.
+  exhausted-retries paths.
 - **`test/launch-mapping.test.ts` gets its own retry-with-backoff** — its
   `fetchServer()` helper bypasses `OfficialMcpRegistry` deliberately (pure
-  mapping-logic tests, not adapter tests), so it never inherited D47's fix;
+  mapping-logic tests, not adapter tests), so it never inherited the adapter-level fix;
   confirmed directly in CI, where its `deriveLaunch()` tests kept failing on
   unretried `curl` timeouts even after every adapter-based test started
   passing reliably. Same 3-attempts/500ms-1000ms-backoff shape, retrying any
@@ -122,7 +116,7 @@ going forward. npm installs also gain a runnable CLI.
   distinction the way `fetch`'s status does, but every server this file
   queries is a real, known-good fixture, so a failure here is always
   network flakiness). `testOpts.timeout` raised 20000 → 50000 for the new
-  worst case. See [D48](docs/ARCHITECTURE.md).
+  worst case.
 - **Node-runnable CLI, closing #94** — `npm install @medullaflow/ribosome`
   now adds a `ribosome` command (`package.json`'s new `bin` field points at
   `dist/cli.js`, `src/cli.ts` compiled by `tsc`), so
@@ -171,17 +165,15 @@ going forward. npm installs also gain a runnable CLI.
   extract triggers. Every format keeps the binary and its `mise-bundled`
   sibling directory together, so `resolveMiseBinary()` finds it the same
   way regardless of packaging format. None of these jobs need a
-  Windows/macOS/RPM-family runner to *build* — see [D44](docs/ARCHITECTURE.md)
-  for why, and what's still deferred to the verification-tier issue (#13).
+  Windows/macOS/RPM-family runner to *build* — the install-and-run verification tier is deferred to its own issue (#13).
 
 ### Changed
 - **CI test-retry headroom raised from 2 to 4 attempts** — the narrow,
   grep-gated retry for the known-upstream `oven-sh/bun#23077` false positive
-  (`ci.yml`, D38) stopped reliably clearing after 3 consecutive full-job
+  (`ci.yml`) stopped reliably clearing after 3 consecutive full-job
   failures in one sitting. Confirmed directly against the upstream issue
   that it's a real, still-unfixed bug (closed on GitHub but reproducing as
-  recently as bun 1.4) before touching anything — see
-  [D46](docs/ARCHITECTURE.md) for the investigation and why the
+  recently as bun 1.4) before touching anything; the
   higher-complexity fix (splitting the colliding test files into separate
   `bun test` invocations) stays rejected for now.
 
@@ -214,8 +206,7 @@ Docs-only release, cut to refresh the README rendered on npmjs.com.
 
 First release to go through the automated `publish-npm.yml` pipeline —
 `v0.1.0` was the one-time manual bootstrap publish OIDC trusted publishing
-can't perform for a package's first-ever version (see
-[`docs/ARCHITECTURE.md` D40](docs/ARCHITECTURE.md#design-decisions)). This
+can't perform for a package's first-ever version. This
 release exercises the `smoke-test` job for real for the first time.
 
 ### Added
@@ -238,8 +229,7 @@ release exercises the `smoke-test` job for real for the first time.
   (`.github/workflows/mutation-test.yml`) — weekly cron + `workflow_dispatch`,
   instead of every `push`/`pull_request`. It cost ~5 minutes per run (doubled
   on branches with an open PR, since both events fired), for a signal that
-  only changes when one of the 4 mutated files does. See
-  [`docs/ARCHITECTURE.md` D39](docs/ARCHITECTURE.md#design-decisions).
+  only changes when one of the 4 mutated files does.
 
 ### Added
 - **npm publish workflow** (`.github/workflows/publish-npm.yml`, #18) —
@@ -250,8 +240,7 @@ release exercises the `smoke-test` job for real for the first time.
   the field needed to guard against. First publish (`v0.1.0`) still needs
   a one-time manual bootstrap from a maintainer's own machine — OIDC can't
   publish a package's first-ever version — documented at the top of the
-  workflow file. See
-  [`docs/ARCHITECTURE.md` D40](docs/ARCHITECTURE.md#design-decisions).
+  workflow file.
 - **Post-publish npm smoke test** (`smoke-test` job in `publish-npm.yml`,
   #19) — installs the just-published tarball into an isolated temp project
   (no access to this repo's own source/`node_modules`) and exercises its
@@ -259,8 +248,7 @@ release exercises the `smoke-test` job for real for the first time.
   misconfiguration, a missing export) that the local test suite can't see
   since it runs against `dist/` directly, never against what `npm install`
   alone actually resolves. Retries install up to 5x for registry
-  propagation lag before failing for real. See
-  [`docs/ARCHITECTURE.md` D41](docs/ARCHITECTURE.md#design-decisions).
+  propagation lag before failing for real.
 - **npm library install docs** (README.md, #15's library-track half) — a
   copy-pasteable post-install sanity check, and the `Usage` example now
   also shows `writeLockfile`, the one public export it was missing.
@@ -272,8 +260,7 @@ release exercises the `smoke-test` job for real for the first time.
 - **Mutation-adequacy signal** (`stryker.conf.json`, `scripts/mutation-test.sh`,
   the `mutation-test` CI job) — closes the remaining half of #31 (coverage
   floor landed separately, above). Stryker's generic `command` runner
-  (no third-party bun plugin — see
-  [`docs/ARCHITECTURE.md` D39](docs/ARCHITECTURE.md#design-decisions)) against
+  (no third-party bun plugin) against
   a fixed, fully-deterministic 4-file subset of the suite, run `inPlace` to
   sidestep a TypeScript 7 Compiler API removal that crashes Stryker's default
   sandboxed mode outright. Advisory (`continue-on-error: true`), not gating,
@@ -296,8 +283,7 @@ release exercises the `smoke-test` job for real for the first time.
   same shape after repeated attempts to isolate the exact trigger. The
   retry is narrow, not blanket: it only fires when the output matches the
   bug's exact error string, and gives up after one retry either way — a
-  real, deterministic test regression fails immediately with no retry. See
-  [`docs/ARCHITECTURE.md` D38](docs/ARCHITECTURE.md#design-decisions).
+  real, deterministic test regression fails immediately with no retry.
 
 ### Added
 - **Coverage floor** (`bunfig.toml`, `bun test`'s built-in `coverageThreshold`)
@@ -314,8 +300,7 @@ release exercises the `smoke-test` job for real for the first time.
   enough to make parallel execution a real speed necessity. The other half
   of #31, a mutation-adequacy signal, stays open as a separate follow-up:
   Stryker Mutator's bun-test-runner support needs a short spike to confirm
-  it actually works before committing to it. See
-  [`docs/ARCHITECTURE.md` D37](docs/ARCHITECTURE.md#design-decisions).
+  it actually works before committing to it.
 - **Required code-owner review** on every PR (`require_code_owner_review`
   on the branch-protection ruleset) and an explicit **"Agent-directed
   contributions"** section in `CONTRIBUTING.md` — closes #34. Most of this
@@ -325,22 +310,20 @@ release exercises the `smoke-test` job for real for the first time.
   human-review gate the automated guardrails ultimately serve. With a
   single maintainer, every merge today still goes through a repo-admin
   bypass — a deliberate, visible, audited action, not a workaround — until
-  a second `CODEOWNERS` entry exists. See
-  [`docs/ARCHITECTURE.md` D36](docs/ARCHITECTURE.md#design-decisions).
+  a second `CODEOWNERS` entry exists.
 - **`bun audit`** (`.github/workflows/audit.yml`, push/PR + weekly schedule)
   and **CodeQL** (`.github/workflows/codeql.yml`, `javascript-typescript`) —
   two of five supply-chain tools suggested in a Copilot code-review comment,
   adopted after checking each against this repo's actual state rather than
   the comment's own framing (which assumed this package is already published
   to npm; it isn't yet — see #18). `bun audit` closes a real gap
-  `dependency-review-action` (D32) can't: a CVE disclosed *after* a
+  `dependency-review-action` can't: a CVE disclosed *after* a
   dependency is already merged into the lockfile. CodeQL catches a different
   bug class than Biome (dataflow/taint analysis, relevant given real
   `execFileSync` shell-outs and manifest-driven path resolution). SBOM
   generation and dependency license-compliance scanning were declined for
   now (one runtime dependency total — nothing meaningful to scan yet) and
-  tracked as follow-up issues instead. See
-  [`docs/ARCHITECTURE.md` D35](docs/ARCHITECTURE.md#design-decisions).
+  tracked as follow-up issues instead.
 - **Biome** as the linter + formatter (`biome.json`), enforced at the
   pre-commit hook (staged files) and in CI (whole tree) — the first of the
   [Guardrails & Governance](https://github.com/medullaflow/ribosome/milestones)
@@ -396,7 +379,6 @@ release exercises the `smoke-test` job for real for the first time.
   onto PR branches was removed instead of patched further — it collided
   with the separate "Signed commits" ruleset (rewritten commits aren't
   cryptographically signed) and risked re-triggering itself indefinitely.
-  See [`docs/ARCHITECTURE.md` D33](docs/ARCHITECTURE.md#design-decisions).
   Also reverted an unrelated premature fix for TypeScript 7.0 compatibility
   in `scripts/architecture-rules.js` — the 7.0 bump was never actually
   merged (`typescript` stays on `^5.7.0`; `dependabot.yml` now ignores
@@ -409,8 +391,7 @@ release exercises the `smoke-test` job for real for the first time.
   (Microsoft's own sanctioned bridge package) instead of reaching for the
   `typescript/unstable/ast` subpath, which exists but is explicitly not
   meant to be built on yet. `dependabot.yml`'s major-version ignore rule for
-  `typescript` is removed now that the migration is done. See
-  [`docs/ARCHITECTURE.md` D34](docs/ARCHITECTURE.md#design-decisions).
+  `typescript` is removed now that the migration is done.
 
 ### Changed
 - **Relicensed from `AGPL-3.0-or-later` to `MPL-2.0`.** ribosome is meant to
@@ -422,14 +403,14 @@ release exercises the `smoke-test` job for real for the first time.
   to ribosome's own files come back — without that side effect. Every SPDX
   header, `LICENSE`, `NOTICE`, and `package.json` updated accordingly; full
   reasoning and alternatives considered (LGPL, permissive) in
-  [`docs/ARCHITECTURE.md` D18](docs/ARCHITECTURE.md#design-decisions).
+  [`docs/DECISIONS.md`](docs/DECISIONS.md).
 - **Split the standard into its own repo.** The manifest/lockfile JSON Schemas,
   conformance corpus, and TypeScript binding moved to
   [ribosome-schema](https://github.com/medullaflow/ribosome-schema)
   (Apache-2.0), published as `@medullaflow/ribosome-schema`. This repo now
   depends on it as an ordinary published package (`^0.1.3`) instead of owning
   the schema. Rationale in
-  [`docs/ARCHITECTURE.md` D13](docs/ARCHITECTURE.md#design-decisions).
+  [`docs/DECISIONS.md`](docs/DECISIONS.md).
 - **Reframed to a standalone standard.** The manifest is now an independent,
   versioned `ribosome.json` (source of truth), not a hand-kept mirror of an
   upstream schema. Types are generated from the schema, not the reverse.
@@ -448,9 +429,8 @@ release exercises the `smoke-test` job for real for the first time.
   aggregated failures. `composeView()` is synchronous, reading bin paths
   cached from the same instance's last `materialize()` — no subprocesses.
   Integration-tested against a real mise install (not mocked); CI installs
-  mise so the suite actually runs. See
-  [`docs/ARCHITECTURE.md` D14](docs/ARCHITECTURE.md#design-decisions) for why
-  distribution (no Node required to run ribosome) is solved by compiling to a
+  mise so the suite actually runs.
+  Distribution (no Node required to run ribosome) is solved by compiling to a
   binary, not by a Rust rewrite.
 - **This repo's toolchain now runs on bun**, not Node (`bun install`/`build`/
   `test`/`compile`; `tsc` unchanged as the type-checker and the source of the

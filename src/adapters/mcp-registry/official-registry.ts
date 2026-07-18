@@ -26,7 +26,7 @@ import {
   ServerNotFoundError,
 } from "../../ports/mcp-registry";
 
-// 20s/1000ms (D51), raised from the original 10s/500ms (D47): observed
+// 20s/1000ms, raised from the original 10s/500ms: observed
 // directly (2026-07-14, PR #104's CI) that the live registry can enter a
 // sustained degraded period, not just brief blips, answering with a real
 // 200 but consistently taking ~12-13s to do it -- comfortably past the old

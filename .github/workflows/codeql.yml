@@ -6,7 +6,7 @@ name: CodeQL
 # npx) and resolves file paths from external manifest data, a genuine
 # surface for this class of tool, not a hypothetical one. Free for this
 # public repo via GitHub's native code scanning -- no external account or
-# secret needed, same reasoning as gitleaks/dependency-review (D31/D32).
+# secret needed, same reasoning as gitleaks/dependency-review.
 #
 # No build step: CodeQL's javascript-typescript extractor parses source
 # directly, so this doesn't need `bun install` or `tsc` first.

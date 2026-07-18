@@ -47,14 +47,20 @@ fails halfway through.
 	</Card>
 </CardGrid>
 
-## Why a separate repo from ribosome-schema?
+## How it works
 
-Think npm-the-CLI vs. the `package.json` format: **ribosome is the tool,
-[ribosome-schema](https://github.com/medullaflow/ribosome-schema) is the
-format it reads.** ribosome depends on it as an ordinary package and carries
-no schema files of its own -- see [how ribosome works](/architecture/) for
-the full design.
+1. **Declare** your runtimes and MCP servers together in one `ribosome.json`.
+2. **Resolve** — ribosome provisions each runtime, resolves each server against
+   its registry, and deduplicates shared runtimes into a pool. If anything
+   can't be resolved, it reports every failure at once, before any workflow
+   runs.
+3. **Pin** — the whole result lands in one `ribosome.lock.json`: a deduplicated
+   runtime pool plus one isolated environment view per server, reproducible on
+   the next run.
 
 ```sh
 npx @medullaflow/ribosome resolve
 ```
+
+Ready to try it? **[Start with the Quickstart →](/guides/quickstart/)**, or read
+[how ribosome works](/architecture/) for the full design.

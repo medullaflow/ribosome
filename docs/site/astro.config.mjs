@@ -16,7 +16,7 @@ export default defineConfig({
 		starlight({
 			title: 'ribosome',
 			description:
-				'Standalone dependency resolver: tool/runtime versions via mise-en-place, MCP servers via the MCP Registry.',
+				'The MCP package manager — declare language runtimes and MCP servers in one manifest, resolved together and pinned into a reproducible lockfile before any workflow runs.',
 			social: [
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/medullaflow/ribosome' },
 			],

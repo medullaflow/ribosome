@@ -62,7 +62,7 @@ function addressPort(server: http.Server): number {
 
 const skip = !hasNetworkAccess();
 // Matches the adapter's own full worst case (3 attempts x 20s + 1000ms +
-// 2000ms backoff = 63s, D51), not a lesser "probably just needs 1 retry"
+// 2000ms backoff = 63s), not a lesser "probably just needs 1 retry"
 // assumption -- any test going through the live registry can legitimately
 // need all 3 attempts before the adapter settles, and a tighter test-level
 // timeout would fire before the adapter's own retry loop finishes,
@@ -110,7 +110,7 @@ test("resolve() throws ServerNotFoundError for a name that doesn't exist", testO
 });
 
 // Timeout here is longer than the adapter's own 3 retries x 20s resolve
-// timeout each (D51), plus backoff between them (1000ms + 2000ms = 63s
+// timeout each, plus backoff between them (1000ms + 2000ms = 63s
 // worst case) -- this test deliberately waits out every attempt in full,
 // since a non-routable address never becomes reachable no matter how many
 // times it's retried.

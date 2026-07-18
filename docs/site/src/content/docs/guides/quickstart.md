@@ -68,9 +68,9 @@ inline and legacy `process` server sources.
 ribosome resolve
 ```
 
-This reads `ribosome.json`, provisions the `node@24` runtime via
-[mise](https://mise.jdx.dev), resolves the `fs` server against the MCP
-Registry, and writes `ribosome.lock.json` — a deduplicated runtime pool plus
+This reads `ribosome.json`, provisions the `node@24` runtime, resolves the
+`fs` server against the MCP Registry, and writes `ribosome.lock.json` — a
+deduplicated runtime pool plus
 one resolved environment view per server. If anything can't be resolved (a
 missing tool, an unknown registry entry), `resolve` fails up front, before any
 workflow that depends on the lockfile runs, and reports every failure at

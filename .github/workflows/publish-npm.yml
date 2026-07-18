@@ -29,7 +29,7 @@
 #   Allowed actions: npm publish
 #
 # Two toolchains, deliberately: install/build run on bun (this repo's own
-# tooling, see docs/ARCHITECTURE.md D14), but `bun publish` does not yet
+# tooling), but `bun publish` does not yet
 # support npm's OIDC trusted publishing (oven-sh/bun#24855, still open) — so
 # the actual publish step stays on the npm CLI specifically.
 #

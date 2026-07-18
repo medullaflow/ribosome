@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # SPDX-FileCopyrightText: © 2026 ribosome contributors
 
-# Runs the mutation-adequacy signal (#31, see docs/ARCHITECTURE.md D39) on a
+# Runs the mutation-adequacy signal (#31) on a
 # schedule rather than on every push/PR. It's advisory, not gating, and the
 # Stryker run itself takes ~5 minutes -- charging that to every commit
 # (doubled whenever a branch has an open PR, since push and pull_request
