@@ -38,6 +38,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   `bun` remains this repo's install/build toolchain (D14), unaffected —
   only the test runner changed. See
   [D50](docs/ARCHITECTURE.md#design-decisions).
+- **`OfficialMcpRegistry`'s resolve timeout and retry backoff raised (10s
+  → 20s, 500ms → 1000ms base)** — the live MCP registry was observed
+  answering with a real `200` but consistently taking ~12-13s to do so
+  during a sustained degraded period, past the old 10s per-attempt budget,
+  so every retry hit the same timeout regardless of count. Every dependent
+  test timeout (`official-registry.test.ts`, `multi-registry.test.ts`,
+  `launch-mapping.test.ts`'s own independent curl-based retry) recalculated
+  to match the new worst case, and `hasNetworkAccess()`'s reachability
+  pre-check raised 5s → 10s everywhere it appears, so a slow-but-healthy
+  registry can't cause a test to silently skip instead of exercising the
+  retry logic. See [D51](docs/ARCHITECTURE.md#design-decisions).
 
 ### Fixed
 - **`scripts/architecture-rules.js`'s no-local-schema check now skips

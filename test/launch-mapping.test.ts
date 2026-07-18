@@ -21,7 +21,7 @@ const OFFICIAL_URL = "https://registry.modelcontextprotocol.io";
 
 function hasNetworkAccess(): boolean {
   try {
-    execFileSync("curl", ["-fsS", "--max-time", "5", `${OFFICIAL_URL}/v0.1/health`], {
+    execFileSync("curl", ["-fsS", "--max-time", "10", `${OFFICIAL_URL}/v0.1/health`], {
       stdio: "ignore",
     });
     return true;
@@ -32,17 +32,15 @@ function hasNetworkAccess(): boolean {
 
 const skip = !hasNetworkAccess();
 // timeout comfortably above fetchServer()'s own worst case (3 attempts x
-// 15s curl + incremental backoff between them, ~46.5s) -- bun test
-// --parallel now runs every test file concurrently, so these real HTTP
-// calls can queue behind each other under that concurrent load too, not
-// just behind curl's own single-request timeout.
+// 25s curl + incremental backoff between them (1000ms + 2000ms), D51 ->
+// ~78s), not just a single request's own budget.
 const testOpts = {
   skip: skip ? "registry.modelcontextprotocol.io unreachable" : false,
-  timeout: 50000,
+  timeout: 85000,
 };
 
 const FETCH_MAX_ATTEMPTS = 3;
-const FETCH_RETRY_BACKOFF_MS = 500;
+const FETCH_RETRY_BACKOFF_MS = 1000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -50,8 +48,10 @@ function sleep(ms: number): Promise<void> {
 
 // Retries a transient curl failure with incremental backoff -- the live
 // registry has been observed to intermittently stall and recover within
-// seconds (see docs/ARCHITECTURE.md D47, which gave OfficialMcpRegistry
-// itself the same resilience). This helper bypasses that adapter
+// seconds, and separately to enter sustained multi-minute periods of
+// ~12-13s response times even while answering with a real 200 (see
+// docs/ARCHITECTURE.md D47 and D51, which gave OfficialMcpRegistry itself
+// the same resilience/headroom). This helper bypasses that adapter
 // deliberately (see the file header comment), so it needs its own copy of
 // the same retry logic, not a shared one -- there's no HTTP status to
 // distinguish transient-vs-definitive here (curl's own exit code doesn't
@@ -62,9 +62,10 @@ async function fetchServer(name: string, version: string): Promise<McpServerJson
   const url = `${OFFICIAL_URL}/v0.1/servers/${encodeURIComponent(name)}/versions/${version}`;
   for (let attempt = 1; ; attempt++) {
     try {
-      // --max-time above the ~5s this normally takes, with headroom for the
-      // concurrent load bun test --parallel now puts on the live registry.
-      const raw = execFileSync("curl", ["-fsS", "--max-time", "15", url]);
+      // --max-time above the ~12-13s the live registry has been observed
+      // taking even when healthy (D51), with real headroom, not just
+      // matching that latency.
+      const raw = execFileSync("curl", ["-fsS", "--max-time", "25", url]);
       return JSON.parse(raw.toString()).server;
     } catch (err) {
       if (attempt >= FETCH_MAX_ATTEMPTS) throw err;
