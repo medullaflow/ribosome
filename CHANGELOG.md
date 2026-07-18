@@ -20,6 +20,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
   the root install — mirrors `ribosome-schema`'s `bindings/typescript`
   convention rather than adding a workspace. See
   [D49](docs/ARCHITECTURE.md#design-decisions).
+- **`FallbackMcpRegistry`** — a new `McpRegistry` adapter wrapping any
+  protocol adapter (e.g. `OfficialMcpRegistry`) with an ordered list of
+  mirror base URLs, tried in order only on `RegistryUnreachableError`; a
+  4xx, `ServerNotFoundError`, or any other typed failure is the registry
+  answering definitively and is never a reason to try a mirror. The CLI
+  wires it in automatically via a new `RIBOSOME_REGISTRY_MIRRORS` env var
+  (comma-separated URLs) — unset, behavior is unchanged. No default mirror
+  URLs are hardcoded: researched first and found no single, stable public
+  "Anthropic registry" or "Microsoft registry" endpoint to wire in as a
+  default (Anthropic backs the one official registry; Microsoft's offering
+  is a self-hosted, per-tenant Azure API Center pattern) — a user supplies
+  real mirror URLs themselves. See
+  [D52](docs/ARCHITECTURE.md#design-decisions).
 
 ### Changed
 - **Test runner switched from `bun test` to real `node --test`** —

@@ -59,5 +59,6 @@ export { LOCKFILE_FILENAME, writeLockfile } from "./orchestrator/lockfile-writer
 
 // ── Adapters (default wiring) ───────────────────────────────────────────────
 export { MiseEnvironmentProvider } from "./adapters/mise/mise-environment-provider";
+export { FallbackMcpRegistry } from "./adapters/mcp-registry/fallback-registry";
 export { FileMcpRegistry } from "./adapters/mcp-registry/file-registry";
 export { OfficialMcpRegistry } from "./adapters/mcp-registry/official-registry";
