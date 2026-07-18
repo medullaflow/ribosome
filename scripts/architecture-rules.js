@@ -121,7 +121,11 @@ function checkImportGraph(root) {
 /** Rule 3: no local JSON Schema files anywhere in the repo -- the standard lives in ribosome-schema. */
 function checkNoLocalSchema(repoRoot) {
   const violations = [];
-  const skip = new Set(["node_modules", ".git", "dist"]);
+  // .astro: Astro's own gitignored content-collection type cache
+  // (docs/site/.astro/), which generates a file literally named
+  // <collection>.schema.json -- a build artifact, never a hand-authored
+  // schema, same reasoning as excluding dist below.
+  const skip = new Set(["node_modules", ".git", "dist", ".astro"]);
   (function walk(dir) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       if (skip.has(entry.name)) continue;

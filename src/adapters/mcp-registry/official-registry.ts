@@ -26,13 +26,19 @@ import {
   ServerNotFoundError,
 } from "../../ports/mcp-registry";
 
-const RESOLVE_TIMEOUT_MS = 10_000;
-// Observed directly: the live registry intermittently times out under load
-// and recovers within seconds (see docs/ARCHITECTURE.md D47) -- a bounded
-// retry with incremental backoff absorbs that without masking a genuinely
-// unreachable registry forever. 3 attempts, 500ms/1000ms between them.
+// 20s/1000ms (D51), raised from the original 10s/500ms (D47): observed
+// directly (2026-07-14, PR #104's CI) that the live registry can enter a
+// sustained degraded period, not just brief blips, answering with a real
+// 200 but consistently taking ~12-13s to do it -- comfortably past the old
+// 10s per-attempt budget, so every attempt aborted via AbortSignal.timeout
+// before a healthy-but-slow response ever arrived, defeating the retry
+// entirely (retrying a request that's timing out on latency, not failing,
+// just repeats the same timeout). 20s leaves real margin above that
+// observed latency rather than merely matching it.
+const RESOLVE_TIMEOUT_MS = 20_000;
+// 3 attempts, 1000ms/2000ms between them (RETRY_BACKOFF_MS * attempt).
 const MAX_ATTEMPTS = 3;
-const RETRY_BACKOFF_MS = 500;
+const RETRY_BACKOFF_MS = 1_000;
 
 function isRetryableStatus(status: number): boolean {
   return status >= 500;

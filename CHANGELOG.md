@@ -4,6 +4,60 @@ Format: [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+### Added
+- **Docs site, closing #51** — `docs/site/`, an [Astro](https://astro.build) +
+  [Starlight](https://starlight.astro.build) project, deployed to
+  `https://ribosome.medullaflow.org` by a new `.github/workflows/docs.yml`
+  on every push to `main` touching it. Landing page, a Quickstart, a CLI
+  reference (built from the CLI's own real `--help` output, not hand-copied),
+  a manifest reference, the Library API reference (adapted from
+  `docs/API.md`), a schema-reference page linking out to
+  `ribosome-schema` rather than duplicating it, and a reader-friendly pass
+  over `docs/ARCHITECTURE.md`'s design (not the dense decision log itself).
+  `@astrojs/sitemap` + a hand-written `robots.txt` cover indexability;
+  Starlight's built-in Pagefind search and auto-generated sidebar cover
+  navigability. Own `package.json`/lockfile under `docs/site/`, kept out of
+  the root install — mirrors `ribosome-schema`'s `bindings/typescript`
+  convention rather than adding a workspace. See
+  [D49](docs/ARCHITECTURE.md#design-decisions).
+
+### Changed
+- **Test runner switched from `bun test` to real `node --test`** —
+  `scripts/run-tests.js` compiles `test/` to CommonJS via `tsc` and runs it
+  under Node, eliminating the still-unfixed upstream
+  [oven-sh/bun#23077](https://github.com/oven-sh/bun/issues/23077)
+  (`NotImplementedError: test() inside another test()`) outright rather than
+  retrying around it — every test file already imported from `"node:test"`,
+  never `"bun:test"`, so this runs the same code against the API it was
+  actually written for. `ci.yml`'s D38/D46 retry-on-known-bug wrapper is
+  gone entirely, not just relaxed. `bunfig.toml`'s per-file coverage floor
+  (D37) is replaced by a Node-native equivalent, `scripts/check-test-coverage.js`,
+  parsing `node --test`'s own LCOV output — same 80% threshold, lines only
+  (V8's coverage has no separate "statements" axis, and its function-count
+  for `tsc`'s auto-generated re-export getters doesn't track test quality).
+  `bun` remains this repo's install/build toolchain (D14), unaffected —
+  only the test runner changed. See
+  [D50](docs/ARCHITECTURE.md#design-decisions).
+- **`OfficialMcpRegistry`'s resolve timeout and retry backoff raised (10s
+  → 20s, 500ms → 1000ms base)** — the live MCP registry was observed
+  answering with a real `200` but consistently taking ~12-13s to do so
+  during a sustained degraded period, past the old 10s per-attempt budget,
+  so every retry hit the same timeout regardless of count. Every dependent
+  test timeout (`official-registry.test.ts`, `multi-registry.test.ts`,
+  `launch-mapping.test.ts`'s own independent curl-based retry) recalculated
+  to match the new worst case, and `hasNetworkAccess()`'s reachability
+  pre-check raised 5s → 10s everywhere it appears, so a slow-but-healthy
+  registry can't cause a test to silently skip instead of exercising the
+  retry logic. See [D51](docs/ARCHITECTURE.md#design-decisions).
+
+### Fixed
+- **`scripts/architecture-rules.js`'s no-local-schema check now skips
+  `.astro`** — Astro's own gitignored content-collection type cache
+  generates a file literally named `<collection>.schema.json`, which the
+  architecture fitness function's Rule 3 (no hand-authored JSON Schema
+  files in this repo) was flagging as a violation. Same treatment as the
+  pre-existing `dist` skip entry: a generated build artifact, not source.
+
 ## [0.1.3] - 2026-07-12
 
 The binary distribution track goes live: per-OS packaged installers and

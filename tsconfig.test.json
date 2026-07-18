@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": ".test-build",
+    "allowJs": true,
+    "declaration": false
+  },
+  "include": ["test/**/*", "scripts/architecture-rules.js"]
+}

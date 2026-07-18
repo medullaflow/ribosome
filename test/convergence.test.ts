@@ -43,7 +43,7 @@ const KNOWN_SERVER = { name: "com.pulsemcp/remote-filesystem", version: "0.1.2" 
 
 function hasNetworkAccess(): boolean {
   try {
-    execFileSync("curl", ["-fsS", "--max-time", "5", `${OFFICIAL_URL}/v0.1/health`], {
+    execFileSync("curl", ["-fsS", "--max-time", "10", `${OFFICIAL_URL}/v0.1/health`], {
       stdio: "ignore",
     });
     return true;

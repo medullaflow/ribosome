@@ -12,6 +12,9 @@ validation time, not mid-execution.
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL--2.0-blue.svg)](https://www.mozilla.org/en-US/MPL/2.0/)
 [![Status: alpha](https://img.shields.io/badge/status-alpha-yellow.svg)](#status)
 
+**[Full documentation →](https://ribosome.medullaflow.org)** — quickstart, CLI
+reference, manifest reference, library API, and an architecture walkthrough.
+
 ---
 
 ## The problem

@@ -47,7 +47,7 @@ function officialSource() {
 
 function hasNetworkAccess(): boolean {
   try {
-    execFileSync("curl", ["-fsS", "--max-time", "5", `${OFFICIAL_URL}/v0.1/health`], {
+    execFileSync("curl", ["-fsS", "--max-time", "10", `${OFFICIAL_URL}/v0.1/health`], {
       stdio: "ignore",
     });
     return true;
@@ -61,14 +61,14 @@ function addressPort(server: http.Server): number {
 }
 
 const skip = !hasNetworkAccess();
-// timeout comfortably above the adapter's own 10s resolve timeout (and above
-// the ~5s default node:test timeout), since bun test --parallel now runs
-// every test file concurrently -- these real HTTP calls can queue behind
-// each other under that concurrent load, not just behind the adapter's own
-// single-request timeout.
+// Sized for "one attempt succeeds, but a second is needed" (2 x the
+// adapter's 20s resolve timeout, D51, + 1000ms backoff = 41s), not just a
+// single fast call -- the live registry has been observed answering these
+// exact endpoints in ~12-13s even when healthy (D51), which alone eats
+// most of a tighter budget before accounting for an occasional retry.
 const testOpts = {
   skip: skip ? "registry.modelcontextprotocol.io unreachable" : false,
-  timeout: 20000,
+  timeout: 45000,
 };
 
 test("resolve() fetches a real, known server from the live registry", testOpts, async () => {
@@ -104,12 +104,13 @@ test("resolve() throws ServerNotFoundError for a name that doesn't exist", testO
   );
 });
 
-// Timeout here is longer than the adapter's own 3 retries x 10s resolve
-// timeout each, plus backoff between them (~31.5s worst case) -- this test
-// deliberately waits out every attempt in full, since a non-routable
-// address never becomes reachable no matter how many times it's retried.
+// Timeout here is longer than the adapter's own 3 retries x 20s resolve
+// timeout each (D51), plus backoff between them (1000ms + 2000ms = 63s
+// worst case) -- this test deliberately waits out every attempt in full,
+// since a non-routable address never becomes reachable no matter how many
+// times it's retried.
 test("resolve() throws RegistryUnreachableError against a non-routable address", {
-  timeout: 35000,
+  timeout: 70000,
 }, async () => {
   await assert.rejects(
     new OfficialMcpRegistry().resolve({

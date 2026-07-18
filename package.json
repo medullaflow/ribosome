@@ -22,7 +22,7 @@
     "build": "tsc",
     "postbuild": "chmod +x dist/cli.js",
     "typecheck:test": "tsc --noEmit -p tsconfig.check.json",
-    "test": "bun run build && bun test",
+    "test": "bun run build && node scripts/run-tests.js",
     "compile": "bun build --compile bin/ribosome.ts --outfile dist/ribosome",
     "lint": "biome check",
     "lint:fix": "biome check --write",

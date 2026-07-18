@@ -25,7 +25,7 @@ const LOCAL_AUTH_TOKEN = "local-test-token-abc123";
 
 function hasNetworkAccess(): boolean {
   try {
-    execFileSync("curl", ["-fsS", "--max-time", "5", `${OFFICIAL_URL}/v0.1/health`], {
+    execFileSync("curl", ["-fsS", "--max-time", "10", `${OFFICIAL_URL}/v0.1/health`], {
       stdio: "ignore",
     });
     return true;
@@ -35,13 +35,13 @@ function hasNetworkAccess(): boolean {
 }
 
 const skip = !hasNetworkAccess();
-// timeout comfortably above the adapter's own 10s resolve timeout -- bun
-// test --parallel now runs every test file concurrently, so this real HTTP
-// call can queue behind others under that concurrent load, not just behind
-// the adapter's own single-request timeout.
+// Sized for "one attempt succeeds, but a second is needed" (2 x the
+// adapter's 20s resolve timeout, D51, + 1000ms backoff = 41s) -- the live
+// registry has been observed answering this exact endpoint in ~12-13s even
+// when healthy (D51), which alone eats most of a tighter budget.
 const testOpts = {
   skip: skip ? "registry.modelcontextprotocol.io unreachable" : false,
-  timeout: 20000,
+  timeout: 45000,
 };
 
 test(
