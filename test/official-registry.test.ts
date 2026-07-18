@@ -61,14 +61,19 @@ function addressPort(server: http.Server): number {
 }
 
 const skip = !hasNetworkAccess();
-// Sized for "one attempt succeeds, but a second is needed" (2 x the
-// adapter's 20s resolve timeout, D51, + 1000ms backoff = 41s), not just a
-// single fast call -- the live registry has been observed answering these
-// exact endpoints in ~12-13s even when healthy (D51), which alone eats
-// most of a tighter budget before accounting for an occasional retry.
+// Matches the adapter's own full worst case (3 attempts x 20s + 1000ms +
+// 2000ms backoff = 63s, D51), not a lesser "probably just needs 1 retry"
+// assumption -- any test going through the live registry can legitimately
+// need all 3 attempts before the adapter settles, and a tighter test-level
+// timeout would fire before the adapter's own retry loop finishes,
+// producing an artificial test failure that masks what the adapter would
+// have actually done. Caught exactly this way: an earlier, tighter budget
+// here (45000ms) killed "resolve() defaults to the latest version" mid
+// retry even though the registry was healthy and fast (~1.2s) moments
+// later -- the test timeout, not the registry, was the bug.
 const testOpts = {
   skip: skip ? "registry.modelcontextprotocol.io unreachable" : false,
-  timeout: 45000,
+  timeout: 70000,
 };
 
 test("resolve() fetches a real, known server from the live registry", testOpts, async () => {
