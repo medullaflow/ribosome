@@ -35,13 +35,14 @@ function hasNetworkAccess(): boolean {
 }
 
 const skip = !hasNetworkAccess();
-// Sized for "one attempt succeeds, but a second is needed" (2 x the
-// adapter's 20s resolve timeout, D51, + 1000ms backoff = 41s) -- the live
-// registry has been observed answering this exact endpoint in ~12-13s even
-// when healthy (D51), which alone eats most of a tighter budget.
+// Matches the adapter's own full worst case (3 attempts x 20s + 1000ms +
+// 2000ms backoff = 63s, D51) -- this test goes through the real adapter,
+// so it can legitimately need all 3 attempts before settling, and a
+// tighter test-level timeout would fire before the adapter's own retry
+// loop finishes (see official-registry.test.ts for how this was caught).
 const testOpts = {
   skip: skip ? "registry.modelcontextprotocol.io unreachable" : false,
-  timeout: 45000,
+  timeout: 70000,
 };
 
 test(
