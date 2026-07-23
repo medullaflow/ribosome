@@ -38,7 +38,7 @@
     "@medullaflow/ribosome-schema": "^0.1.9"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.4",
+    "@biomejs/biome": "2.5.5",
     "@stryker-mutator/core": "^9.6.1",
     "@types/node": "^26.1.1",
     "@typescript/typescript6": "^6.0.2",
